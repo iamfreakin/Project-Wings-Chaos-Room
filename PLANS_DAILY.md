@@ -34,7 +34,7 @@
 
 ---
 
-## [1주차 2일차] 입력 바인딩 및 상태 정의 (진행 중)
+## [1주차 2일차] 입력 바인딩 및 상태 정의 (완료)
 
 ### 1. 목표
 - 기체의 3가지 상태(Ready, Flying, Crashed) 정의 및 전환 로직 구현.
@@ -71,4 +71,39 @@
 ### 6. 검증 방법
 - PIE 실행 후 마우스 조작을 통해 기체의 회전 반응 확인.
 - Ready 상태에서 기체가 허공에 잘 떠 있는지 확인.
+
+---
+
+## [1주차 3일차] 포트리스식 발사 시스템 (완료)
+
+### 1. 목표
+- 마우스 왼쪽 버튼 홀드 시 파워 충전 로직 구현.
+- 버튼 해제 시 충전된 파워에 비례한 발사 추진력 부여.
+- 충전 중 시각적 피드백 (로그 및 변수 실시간 업데이트).
+
+### 2. 영향 범위
+- `ProjectWings/Source/ProjectWings/Public/Pawn/WingsPawnBase.h` (파워 관련 변수 추가)
+- `ProjectWings/Source/ProjectWings/Private/Pawn/WingsPawnBase.cpp` (충전 및 발사 로직 고도화)
+
+### 3. 상세 단계 (C++ Implementation)
+1. **변수 추가**: `CurrentLaunchPower` (0.0~1.0), `MaxLaunchForce`, `ChargeSpeed` 선언.
+2. **입력 바인딩 수정**: `IA_Launch` 액션을 `Started`(충전 시작)와 `Completed`(발사)로 분리하여 바인딩.
+3. **충전 로직 (`Tick`)**: 충전 상태일 때 `DeltaTime`을 이용하여 `CurrentLaunchPower`를 0에서 1까지 점진적으로 증가.
+4. **발사 로직 (`Launch`)**: `InitialLaunchForce` 대신 `MaxLaunchForce * CurrentLaunchPower`를 사용하여 최종 힘 계산.
+
+### 4. Editor Workflow (중요)
+1. **스탯 설정**:
+   - `BP_WingsPawn`에서 `MaxLaunchForce`: **1,000,000.0** (기본값의 2배) 설정.
+   - `ChargeSpeed`: **0.5** (2초 동안 풀차지) 설정.
+2. **디버깅**:
+   - `Tick` 함수에서 충전 중일 때 `GEngine->AddOnScreenDebugMessage`를 사용하여 현재 파워를 화면에 표시.
+
+### 5. Success Criteria
+- 왼쪽 마우스 버튼을 누르고 있는 동안 파워가 증가하면 성공.
+- 버튼을 짧게 누르면 살짝 날아가고, 길게 누르면 멀리 날아가면 성공.
+- 발사 후에는 파워가 0으로 초기화되면 성공.
+
+### 6. 검증 방법
+- PIE 실행 후 클릭 길이에 따른 기체의 비행 거리 차이 수동 확인.
+- 화면에 출력되는 파워 수치가 0~1 사이에서 정상 동작하는지 확인.
 

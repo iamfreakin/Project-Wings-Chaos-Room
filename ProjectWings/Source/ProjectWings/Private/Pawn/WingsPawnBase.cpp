@@ -46,8 +46,12 @@ AWingsPawnBase::AWingsPawnBase()
 	EngineTrailComponent->bAutoActivate = false;
 
 	// 기본 스탯 초기화
-	InitialLaunchForce = 5000.f;
-	AimRotationSpeed = 1.f;
+	InitialLaunchForce = 500000.f;
+	MaxLaunchForce = 1500000.f; // 최대 150만
+	ChargeSpeed = 0.5f;         // 2초면 풀충전
+	CurrentLaunchPower = 0.f;
+	bIsCharging = false;
+	AimRotationSpeed = 2.f;
 
 	// 초기 상태 설정
 	CurrentState = EWingsPawnState::Ready;
@@ -81,6 +85,19 @@ void AWingsPawnBase::BeginPlay()
 void AWingsPawnBase::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	// 파워 충전 로직
+	if (bIsCharging && CurrentState == EWingsPawnState::Ready)
+	{
+		CurrentLaunchPower = FMath::Clamp(CurrentLaunchPower + (ChargeSpeed * DeltaTime), 0.f, 1.f);
+		
+		// 화면에 충전 게이지 표시 (디버그용)
+		if (GEngine)
+		{
+			FString PowerMsg = FString::Printf(TEXT("Charging Power: %.2f"), CurrentLaunchPower);
+			GEngine->AddOnScreenDebugMessage(1, DeltaTime, FColor::Yellow, PowerMsg);
+		}
+	}
 }
 
 void AWingsPawnBase::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -94,8 +111,9 @@ void AWingsPawnBase::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 			// Aim (Axis2D)
 			EnhancedInputComponent->BindAction(InputConfig->IA_Aim, ETriggerEvent::Triggered, this, &AWingsPawnBase::Input_Aim);
 
-			// Launch (Triggered/Completed)
-			EnhancedInputComponent->BindAction(InputConfig->IA_Launch, ETriggerEvent::Started, this, &AWingsPawnBase::Input_Launch);
+			// Launch (Started: 충전 시작 / Completed: 발사)
+			EnhancedInputComponent->BindAction(InputConfig->IA_Launch, ETriggerEvent::Started, this, &AWingsPawnBase::Input_LaunchStarted);
+			EnhancedInputComponent->BindAction(InputConfig->IA_Launch, ETriggerEvent::Completed, this, &AWingsPawnBase::Input_LaunchCompleted);
 		}
 	}
 }
@@ -109,6 +127,8 @@ void AWingsPawnBase::SetPawnState(EWingsPawnState NewState)
 	case EWingsPawnState::Ready:
 		// 조준 중에는 중력 영향 없이 허공에 고정
 		MeshComponent->SetSimulatePhysics(false);
+		CurrentLaunchPower = 0.f;
+		bIsCharging = false;
 		break;
 
 	case EWingsPawnState::Flying:
@@ -139,17 +159,34 @@ void AWingsPawnBase::Input_Aim(const FInputActionValue& Value)
 	SetActorRotation(FRotator(NewPitch, NewYaw, 0.f));
 }
 
-void AWingsPawnBase::Input_Launch(const FInputActionValue& Value)
+void AWingsPawnBase::Input_LaunchStarted(const FInputActionValue& Value)
 {
 	if (CurrentState == EWingsPawnState::Ready)
 	{
+		bIsCharging = true;
+		CurrentLaunchPower = 0.f;
+	}
+}
+
+void AWingsPawnBase::Input_LaunchCompleted(const FInputActionValue& Value)
+{
+	if (bIsCharging && CurrentState == EWingsPawnState::Ready)
+	{
+		bIsCharging = false;
 		SetPawnState(EWingsPawnState::Flying);
 
-		// 전방으로 초기 추진력 가하기
+		// 충전된 파워에 따른 최종 힘 계산 (최소 InitialLaunchForce 보장)
+		float FinalForce = FMath::Max(MaxLaunchForce * CurrentLaunchPower, InitialLaunchForce);
+		
 		FVector LaunchDirection = GetActorForwardVector();
-		MeshComponent->AddImpulse(LaunchDirection * InitialLaunchForce, NAME_None, true);
+		MeshComponent->AddImpulse(LaunchDirection * FinalForce, NAME_None, true);
 
-		UE_LOG(LogWings, Display, TEXT("AWingsPawnBase: Launched with force %f"), InitialLaunchForce);
+		UE_LOG(LogWings, Display, TEXT("AWingsPawnBase: Launched with power %.2f (Total Force: %f)"), CurrentLaunchPower, FinalForce);
+		
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(2, 2.f, FColor::Cyan, FString::Printf(TEXT("Launched! Power: %.2f"), CurrentLaunchPower));
+		}
 	}
 }
 

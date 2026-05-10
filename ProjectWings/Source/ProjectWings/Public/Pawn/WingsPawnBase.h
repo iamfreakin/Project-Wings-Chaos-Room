@@ -50,7 +50,8 @@ protected:
 
 	/** 입력 처리 함수 */
 	void Input_Aim(const FInputActionValue& Value);
-	void Input_Launch(const FInputActionValue& Value);
+	void Input_LaunchStarted(const FInputActionValue& Value);
+	void Input_LaunchCompleted(const FInputActionValue& Value);
 
 protected:
 	/** 현재 기체 상태 */
@@ -67,6 +68,19 @@ protected:
 	/** 조준 시 회전 속도 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Stats")
 	float AimRotationSpeed;
+
+	/** 발사 관련 변수 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Stats")
+	float MaxLaunchForce;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Stats")
+	float ChargeSpeed;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Wings|Stats")
+	float CurrentLaunchPower;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Wings|Stats")
+	bool bIsCharging;
 
 	/** 기체 물리 및 메쉬를 담당하는 루트 컴포넌트 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Wings|Components", meta = (AllowPrivateAccess = "true"))
