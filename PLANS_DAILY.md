@@ -1,0 +1,74 @@
+# Project Wings: Daily Development Plans
+
+## [1주차 1일차] WingsPawnBase 컴포넌트 구성 및 기초 설계 (완료)
+
+### 1. 목표
+- `AWingsPawnBase` 클래스의 물리 기반 구조 완성.
+- 에디터에서 상속받은 블루프린트(`BP_WingsPawn`)를 생성하고, 실제 조종 가능한 기체로 동작하기 위한 컴포넌트 설정 수치 확정.
+- 엔진 트레일(Niagara) 및 카메라 시야각 등 시각적 기초 환경 구축.
+
+### 2. 영향 범위
+- `ProjectWings/Source/ProjectWings/Public/Pawn/WingsPawnBase.h`
+- `ProjectWings/Source/ProjectWings/Private/Pawn/WingsPawnBase.cpp`
+- `Content/Blueprints/BP_WingsPawn.uasset` (신규 생성)
+
+### 3. 상세 단계 (C++ Implementation)
+1. **컴포넌트 선언**: `MeshComponent`, `SpringArm`, `Camera`, `EngineTrail` 컴포넌트 추가.
+2. **물리 속성 설정**: 생성자에서 `LinearDamping`, `AngularDamping` 설정으로 물리 안정성 확보.
+3. **카메라 시스템**: `SpringArm`의 `TargetArmLength` 및 `SocketOffset` 조정으로 비행 시야 확보.
+4. **기본 스탯**: `InitialLaunchForce` 변수 추가 및 기본값 설정.
+
+### 4. Editor Workflow (중요)
+1. **블루프린트 생성**: `AWingsPawnBase`를 상속받은 `BP_WingsPawn` 생성.
+2. **메쉬 및 물리 설정**: `MeshComponent`에 메쉬 할당 및 `Simulate Physics` 활성화.
+3. **카메라 조정**: `SpringArm` 길이(800) 및 오프셋(Z=100) 설정.
+4. **월드 배치**: 레벨 배치 후 `Auto Possess Player`를 **Player 0**으로 설정.
+
+### 5. Success Criteria
+- 플레이 시 기체가 중력에 의해 자연스럽게 낙하하면 성공.
+- 카메라가 기체 후방 상단에서 적절한 구도를 유지하면 성공.
+- `LogWings`를 통해 풍향 데이터 로드 로그가 확인되면 성공.
+
+### 6. 검증 방법
+- PIE 실행 후 기체의 물리 낙하 및 카메라 트래킹 수동 확인.
+
+---
+
+## [1주차 2일차] 입력 바인딩 및 상태 정의 (진행 중)
+
+### 1. 목표
+- 기체의 3가지 상태(Ready, Flying, Crashed) 정의 및 전환 로직 구현.
+- Enhanced Input 시스템을 WingsPawnBase에 연동.
+- Ready 상태에서 마우스 움직임(Aim)에 따라 기체가 회전하는 로직 구현.
+
+### 2. 영향 범위
+- `ProjectWings/Source/ProjectWings/Public/Pawn/WingsPawnBase.h` (상태 Enum 추가 및 입력 함수 선언)
+- `ProjectWings/Source/ProjectWings/Private/Pawn/WingsPawnBase.cpp` (입력 바인딩 및 로직 구현)
+- `Content/Input/` (입력 에셋 생성 필요)
+
+### 3. 상세 단계 (C++ Implementation)
+1. 상태 Enum 정의: `EWingsPawnState`를 생성하여 상태 관리.
+2. 입력 에셋 참조: `UWingsInputConfigData`와 `UInputMappingContext` 포인터를 `WingsPawnBase`에 추가.
+3. 입력 바인딩: `SetupPlayerInputComponent`에서 `IA_Aim` 액션을 바인딩.
+4. 조준 로직: `Ready` 상태일 때 마우스 입력값에 따라 `MeshComponent`의 `RelativeRotation`을 변경.
+
+### 4. Editor Workflow (중요)
+1. 입력 에셋 생성:
+   - `Content/Input` 폴더 생성.
+   - `Input Action` 생성: `IA_Aim` (Value Type: Axis2D), `IA_Launch` (Digital).
+   - `Input Mapping Context` 생성: `IMC_WingsPlayer`.
+     - `IA_Aim` 등록 -> `Mouse XY 2D-Axis` 할당.
+     - `IA_Launch` 등록 -> `Left Mouse Button` 할당.
+2. Data Asset 생성:
+   - `UWingsInputConfigData` 기반의 Data Asset(`DA_WingsInput`) 생성 및 액션 할당.
+3. Pawn 설정:
+   - `BP_WingsPawn`에 `IMC_WingsPlayer`와 `DA_WingsInput` 할당.
+
+### 5. Success Criteria
+- 플레이 시작 시 기체가 바닥에 떨어지지 않고 공중에 고정됨 (`Ready` 상태 물리 일시 정지).
+- 마우스를 움직일 때 기체가 마우스 방향을 따라 위/아래/좌/우로 회전함.
+
+### 6. 검증 방법
+- PIE 실행 후 마우스 조작을 통해 기체의 회전 반응 확인.
+- Ready 상태에서 기체가 허공에 잘 떠 있는지 확인.
+
