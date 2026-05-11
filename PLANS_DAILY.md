@@ -218,10 +218,35 @@
 
 ---
 
-## [1주차 8일차] 1주차 통합 디버깅 (예정)
+## [1주차 8일차] 다이내믹 카메라 및 자유 시점 구현 (예정)
 
 ### 1. 목표
-- 발사부터 비행, 연료 고갈까지의 전체 시퀀스 안정성 검토.
-- 예외 상황(예: 발사 전 충돌, 공중 정지 등) 처리 및 버그 수정.
-- 다음 주차(Chaos Physics)를 위한 코드 정리.
+- **유연한 추적 카메라**: 기체의 급격한 회전 시 카메라가 부드럽게 지연(Lag)되며 따라오도록 설정하여 물리적 긴장감 부여.
+- **동적 시야각(FOV) 및 거리**: 기체의 속도가 빨라지면 FOV가 넓어지고 카메라 거리가 뒤로 멀어지는 효과를 통해 속도감 극대화.
+- **자유 시점(Free Look)**: 마우스 우클릭을 유지하는 동안 기체의 방향과 상관없이 주변을 둘러볼 수 있는 기능 구현.
+- **언리얼 5.5+ 최신 방식 적용**: `Camera Shake`가 아닌 `Camera Lens Effect` 또는 강화된 `SpringArm` 기능을 활용한 몰입감 개선.
+
+### 2. 영향 범위
+- `ProjectWings/Source/ProjectWings/Public/Pawn/WingsPawnBase.h/cpp`
+- `ProjectWings/Source/ProjectWings/Public/Data/WingsInputConfigData.h`
+- `Content/Input/` (IA_FreeLook 신규 생성 및 IMC 바인딩)
+
+### 3. 상세 단계 (C++ Implementation)
+1. **SpringArm 설정 최적화**: `bEnableCameraLag`, `bEnableCameraRotationLag` 활성화 및 속도 수치 변수화.
+2. **동적 효과 (Dynamic FOV/Distance)**: `Tick`에서 전방 속도(`DotProduct`) 기반으로 FOV와 `TargetArmLength`를 `FMath::FInterpTo`로 보간 업데이트.
+3. **자유 시점 (Free Look) 구현**: `IA_FreeLook` 바인딩, 우클릭 시 `bIsFreeLooking` 활성화 및 카메라 회전 제어 분리. 우클릭 해제 시 부드러운 카메라 복귀 로직 추가.
+
+### 4. Editor Workflow (중요)
+1. **입력 에셋 설정**: `IA_FreeLook` (Digital) 생성 및 `IMC_WingsPlayer`에 `Right Mouse Button` 등록.
+2. **데이터 에셋 업데이트**: `DA_WingsInput`에 생성한 액션 할당.
+3. **수치 밸런싱**: `BP_WingsPawn`에서 카메라 지연 속도, FOV 최소/최대값, ArmLength 가중치 조정.
+
+### 5. Success Criteria
+- 기체 회전 시 카메라가 부드럽게 뒤따라오며(Lag), 속도가 빨라질수록 시야가 넓어짐(FOV).
+- 우클릭을 누른 상태에서 마우스를 움직여 기체 주변을 360도 자유롭게 관찰 가능.
+- 우클릭을 떼면 카메라가 기체 정후방으로 자연스럽게 복귀.
+
+### 6. 검증 방법
+- PIE 실행 후 가속/감속 및 급선회 시 카메라 연출 확인.
+- 우클릭 조작을 통한 자유 시점 및 복귀 트리거 테스트.
 
