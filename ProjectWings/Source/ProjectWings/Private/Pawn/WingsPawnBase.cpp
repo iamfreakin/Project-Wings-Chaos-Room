@@ -61,7 +61,7 @@ AWingsPawnBase::AWingsPawnBase()
 	VelocityAlignmentSpeed = 2.0f;
 	bEnableAutoLeveling = true;
 	AutoLevelingSpeed = 1.5f;
-	BankToTurnAmount = 0.5f;
+	BankToTurnAmount = 0.1f;
 	FlightSideMoveForce = 1500.0f;
 	MaxForwardThrust = 50000.0f;
 	ThrustStep = 100.0f;
