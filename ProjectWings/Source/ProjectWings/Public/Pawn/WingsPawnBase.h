@@ -111,6 +111,22 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Wings|Stats|Flight")
 	float CurrentThrust;
 
+	/** 최대 연료량 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Stats|Fuel")
+	float MaxFuel;
+
+	/** 현재 남은 연료량 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Wings|Stats|Fuel")
+	float CurrentFuel;
+
+	/** 초당 기본 연료 소모량 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Stats|Fuel")
+	float FuelConsumptionRate;
+
+	/** 추진력(Thrust) 사용 시 추가 연료 소모 배율 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Stats|Fuel")
+	float ThrustFuelConsumptionMultiplier;
+
 	/** 기체 물리 및 메쉬를 담당하는 루트 컴포넌트 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Wings|Components", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UStaticMeshComponent> MeshComponent;
@@ -133,4 +149,11 @@ public:
 	USpringArmComponent* GetSpringArmComponent() const { return SpringArmComponent.Get(); }
 	UCameraComponent* GetCameraComponent() const { return CameraComponent.Get(); }
 	UInputMappingContext* GetDefaultMappingContext() const { return DefaultMappingContext.Get(); }
+
+	/** 연료 관련 게터 */
+	UFUNCTION(BlueprintPure, Category = "Wings|Stats|Fuel")
+	float GetCurrentFuel() const { return CurrentFuel; }
+
+	UFUNCTION(BlueprintPure, Category = "Wings|Stats|Fuel")
+	float GetFuelPercentage() const { return (MaxFuel > 0.0f) ? (CurrentFuel / MaxFuel) : 0.0f; }
 };

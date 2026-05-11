@@ -57,6 +57,12 @@ AWingsPawnBase::AWingsPawnBase()
 	ThrustStep = 100.0f;
 	CurrentThrust = 0.0f;
 
+	// 연료 관련 기본값 설정
+	MaxFuel = 100.0f;
+	CurrentFuel = 100.0f;
+	FuelConsumptionRate = 1.0f;
+	ThrustFuelConsumptionMultiplier = 2.0f;
+
 	// 초기 상태 설정
 	CurrentState = EWingsPawnState::Flying;
 }
@@ -64,6 +70,8 @@ AWingsPawnBase::AWingsPawnBase()
 void AWingsPawnBase::BeginPlay()
 {
 	Super::BeginPlay();
+
+	CurrentFuel = MaxFuel;
 
 	// IMC 추가 로직은 이제 AWingsPlayerController::TransitionToFlight에서 관리합니다.
 }
@@ -74,6 +82,33 @@ void AWingsPawnBase::Tick(float DeltaTime)
 
 	if (CurrentState == EWingsPawnState::Flying)
 	{
+		// 0. 연료 소모 및 고갈 처리
+		if (CurrentFuel > 0.f)
+		{
+			// 기본 소모 + 추진력에 따른 추가 소모
+			float ThrustRatio = (MaxForwardThrust > 0.f) ? (CurrentThrust / MaxForwardThrust) : 0.f;
+			float ActualConsumption = FuelConsumptionRate + (ThrustRatio * FuelConsumptionRate * ThrustFuelConsumptionMultiplier);
+			
+			CurrentFuel = FMath::Max(0.f, CurrentFuel - (ActualConsumption * DeltaTime));
+
+			if (GEngine)
+			{
+				GEngine->AddOnScreenDebugMessage(2, DeltaTime, FColor::Green, 
+					FString::Printf(TEXT("Fuel: %.1f%%"), GetFuelPercentage() * 100.f));
+			}
+		}
+		else
+		{
+			// 연료 고갈 시 패널티
+			CurrentThrust = 0.f;
+			MeshComponent->SetLinearDamping(2.0f); // 공기 저항 급증 (추락 유도)
+			
+			if (GEngine)
+			{
+				GEngine->AddOnScreenDebugMessage(2, DeltaTime, FColor::Red, TEXT("OUT OF FUEL!"));
+			}
+		}
+
 		// 1. Velocity Alignment: 진행 방향 보정
 		FVector CurrentVelocity = MeshComponent->GetPhysicsLinearVelocity();
 		float Speed = CurrentVelocity.Size();
@@ -187,7 +222,7 @@ void AWingsPawnBase::Input_Roll(const FInputActionValue& Value)
 
 void AWingsPawnBase::Input_Thrust(const FInputActionValue& Value)
 {
-	if (CurrentState != EWingsPawnState::Flying) return;
+	if (CurrentState != EWingsPawnState::Flying || CurrentFuel <= 0.f) return;
 
 	float ThrustInput = Value.Get<float>();
 	CurrentThrust = FMath::Clamp(CurrentThrust + (ThrustInput * ThrustStep), 0.f, MaxForwardThrust);
