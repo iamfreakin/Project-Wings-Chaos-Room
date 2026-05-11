@@ -48,3 +48,17 @@
 ### Improved
 - **폰 물리**: 발사 후 비행 안정성을 위해 선형/각성 댐핑 수치 조정.
 - **UI/UX**: 충전 중 파워 레벨을 시각화하기 위해 `GEngine` 디버그 메시지 추가.
+
+## [2026-05-11] 궤적 가이드라인 구현
+
+### Added
+- **예상 궤적 시각화**:
+    - `UGameplayStatics::PredictProjectilePath`를 이용한 물리 기반 비행 경로 예측 로직 구현.
+    - `Ready` 상태에서 마우스 조준 및 파워 충전에 따른 실시간 궤적 갱신 기능 추가.
+    - 엔진 디버그 드로잉을 통한 즉각적인 궤적 가이드라인 표시.
+- **궤적 커스텀 변수**:
+    - `TrajectoryMaxTime`, `TrajectoryFrequency`, `TrajectoryRadius` 등을 통해 궤적의 정밀도와 길이를 에디터에서 조절 가능하도록 구현.
+
+### Technical Details
+- `FPredictProjectilePathParams`를 활용하여 실제 물리 엔진과 동일한 중력 및 충돌 판정을 궤적에 반영.
+- `Tick` 내에서의 효율적인 업데이트를 위해 조준 상태(`Ready`)에서만 연산 수행.

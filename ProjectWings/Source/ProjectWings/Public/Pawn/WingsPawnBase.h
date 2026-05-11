@@ -53,6 +53,9 @@ protected:
 	void Input_LaunchStarted(const FInputActionValue& Value);
 	void Input_LaunchCompleted(const FInputActionValue& Value);
 
+	/** 궤적 가이드라인 업데이트 */
+	void UpdateTrajectory();
+
 protected:
 	/** 현재 기체 상태 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Wings|State")
@@ -81,6 +84,19 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Wings|Stats")
 	bool bIsCharging;
+
+	/** 궤적 가이드라인 설정 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Trajectory")
+	bool bShowTrajectory;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Trajectory")
+	float TrajectoryMaxTime;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Trajectory")
+	float TrajectoryFrequency;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Trajectory")
+	float TrajectoryRadius;
 
 	/** 기체 물리 및 메쉬를 담당하는 루트 컴포넌트 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Wings|Components", meta = (AllowPrivateAccess = "true"))

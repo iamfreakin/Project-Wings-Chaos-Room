@@ -107,3 +107,36 @@
 - PIE 실행 후 클릭 길이에 따른 기체의 비행 거리 차이 수동 확인.
 - 화면에 출력되는 파워 수치가 0~1 사이에서 정상 동작하는지 확인.
 
+---
+
+## [1주차 4일차] 궤적 가이드라인 구현 (완료)
+
+### 1. 목표
+- 기체 발사 전(Ready 상태) 예상 비행 궤적을 시각적으로 표시하여 플레이어의 조준을 돕는다.
+- 파워 충전량 및 조준 각도에 따라 실시간으로 변화하는 궤적을 구현한다.
+
+### 2. 영향 범위
+- `ProjectWings/Source/ProjectWings/Public/Pawn/WingsPawnBase.h`
+- `ProjectWings/Source/ProjectWings/Private/Pawn/WingsPawnBase.cpp`
+
+### 3. 상세 단계 (C++ Implementation)
+1. **변수 추가**: `bShowTrajectory`, `TrajectoryMaxTime`, `TrajectoryFrequency`, `TrajectoryRadius` 선언.
+2. **궤적 업데이트 로직**: `UpdateTrajectory()` 함수 구현. `UGameplayStatics::PredictProjectilePath`를 사용하여 물리 궤적 계산.
+3. **실시간 갱신**: `Tick()` 함수에서 `Ready` 상태일 때 매 프레임 `UpdateTrajectory()` 호출.
+4. **시각화**: `FPredictProjectilePathParams`의 `DrawDebugType`을 `ForOneFrame`으로 설정하여 디버그 라인 출력.
+
+### 4. Editor Workflow (중요)
+1. **궤적 설정**:
+   - `BP_WingsPawn`에서 `TrajectoryMaxTime`: **3.0**, `TrajectoryFrequency`: **15.0**, `TrajectoryRadius`: **10.0** 설정.
+2. **조작**:
+   - 마우스를 움직여 조준을 변경하거나 왼쪽 버튼을 눌러 파워를 충전할 때 가이드라인이 실시간으로 변하는지 확인.
+
+### 5. Success Criteria
+- 조준 각도를 바꿀 때 궤적이 즉각적으로 반응함.
+- 파워 충전 중일 때 궤적이 충전량에 비례하여 길어짐.
+- 실제 발사 시 기체가 표시된 가이드라인을 거의 정확하게 따라감.
+
+### 6. 검증 방법
+- PIE 실행 후 가이드라인이 가리키는 특정 지점을 조준하여 발사.
+- 기체가 해당 지점 근처에 착지하거나 충돌하는지 수동 확인.
+

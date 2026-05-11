@@ -9,6 +9,7 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "Data/WingsInputConfigData.h"
+#include "Kismet/GameplayStatics.h"
 
 // 로그 사용을 위해 필요한 경우에만 선언 (ProjectWings.h 대체)
 DECLARE_LOG_CATEGORY_EXTERN(LogWings, Log, All);
@@ -53,6 +54,12 @@ AWingsPawnBase::AWingsPawnBase()
 	bIsCharging = false;
 	AimRotationSpeed = 2.f;
 
+	// 궤적 설정 초기화
+	bShowTrajectory = true;
+	TrajectoryMaxTime = 3.f;
+	TrajectoryFrequency = 15.f;
+	TrajectoryRadius = 10.f;
+
 	// 초기 상태 설정
 	CurrentState = EWingsPawnState::Ready;
 }
@@ -86,16 +93,22 @@ void AWingsPawnBase::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	// 파워 충전 로직
-	if (bIsCharging && CurrentState == EWingsPawnState::Ready)
+	// 조준 및 충전 중일 때 궤적 업데이트
+	if (CurrentState == EWingsPawnState::Ready)
 	{
-		CurrentLaunchPower = FMath::Clamp(CurrentLaunchPower + (ChargeSpeed * DeltaTime), 0.f, 1.f);
-		
-		// 화면에 충전 게이지 표시 (디버그용)
-		if (GEngine)
+		UpdateTrajectory();
+
+		// 파워 충전 로직
+		if (bIsCharging)
 		{
-			FString PowerMsg = FString::Printf(TEXT("Charging Power: %.2f"), CurrentLaunchPower);
-			GEngine->AddOnScreenDebugMessage(1, DeltaTime, FColor::Yellow, PowerMsg);
+			CurrentLaunchPower = FMath::Clamp(CurrentLaunchPower + (ChargeSpeed * DeltaTime), 0.f, 1.f);
+			
+			// 화면에 충전 게이지 표시 (디버그용)
+			if (GEngine)
+			{
+				FString PowerMsg = FString::Printf(TEXT("Charging Power: %.2f"), CurrentLaunchPower);
+				GEngine->AddOnScreenDebugMessage(1, DeltaTime, FColor::Yellow, PowerMsg);
+			}
 		}
 	}
 }
@@ -179,6 +192,7 @@ void AWingsPawnBase::Input_LaunchCompleted(const FInputActionValue& Value)
 		float FinalForce = FMath::Max(MaxLaunchForce * CurrentLaunchPower, InitialLaunchForce);
 		
 		FVector LaunchDirection = GetActorForwardVector();
+		// bVelChange=true 옵션을 사용하여 질량과 무관하게 즉각적인 속도 변화 유도
 		MeshComponent->AddImpulse(LaunchDirection * FinalForce, NAME_None, true);
 
 		UE_LOG(LogWings, Display, TEXT("AWingsPawnBase: Launched with power %.2f (Total Force: %f)"), CurrentLaunchPower, FinalForce);
@@ -190,3 +204,29 @@ void AWingsPawnBase::Input_LaunchCompleted(const FInputActionValue& Value)
 	}
 }
 
+void AWingsPawnBase::UpdateTrajectory()
+{
+	if (!bShowTrajectory || CurrentState != EWingsPawnState::Ready) return;
+
+	// 현재 조준 방향과 충전 파워를 기반으로 초기 속도 계산
+	FVector LaunchDirection = GetActorForwardVector();
+	float FinalForce = FMath::Max(MaxLaunchForce * CurrentLaunchPower, InitialLaunchForce);
+	FVector LaunchVelocity = LaunchDirection * FinalForce;
+
+	FPredictProjectilePathParams PathParams;
+	PathParams.StartLocation = GetActorLocation();
+	PathParams.LaunchVelocity = LaunchVelocity;
+	PathParams.bTraceWithCollision = true;
+	PathParams.ProjectileRadius = TrajectoryRadius;
+	PathParams.MaxSimTime = TrajectoryMaxTime;
+	PathParams.bTraceWithChannel = true;
+	PathParams.TraceChannel = ECollisionChannel::ECC_WorldStatic;
+	PathParams.ActorsToIgnore.Add(this);
+	
+	// 디버그 라인 설정
+	PathParams.DrawDebugType = EDrawDebugTrace::ForOneFrame;
+	PathParams.SimFrequency = TrajectoryFrequency;
+
+	FPredictProjectilePathResult PathResult;
+	UGameplayStatics::PredictProjectilePath(this, PathParams, PathResult);
+}
