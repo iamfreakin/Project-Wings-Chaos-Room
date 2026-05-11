@@ -46,19 +46,32 @@ AWingsPawnBase::AWingsPawnBase()
 	EngineTrailComponent->SetupAttachment(RootComponent);
 	EngineTrailComponent->bAutoActivate = false;
 
-	// 기본 스탯 초기화
-	InitialLaunchForce = 500000.f;
-	MaxLaunchForce = 1500000.f; // 최대 150만
-	ChargeSpeed = 0.5f;         // 2초면 풀충전
-	CurrentLaunchPower = 0.f;
+	// 1. Stats (상태 관련) 기본값 설정
+	AimRotationSpeed = 2.0f;
+	MaxLaunchForce = 10000.0f;
+	ChargeSpeed = 0.2f;
+	CurrentLaunchPower = 0.0f;
 	bIsCharging = false;
-	AimRotationSpeed = 2.f;
+	InitialLaunchForce = 1000.0f;
 
-	// 궤적 설정 초기화
+	// 2. Flight (비행 관련) 기본값 설정
+	FlightPitchSensitivity = 0.05f;
+	FlightYawSensitivity = 0.03f;
+	FlightRollSensitivity = 0.5f;
+	VelocityAlignmentSpeed = 2.0f;
+	bEnableAutoLeveling = true;
+	AutoLevelingSpeed = 1.5f;
+	BankToTurnAmount = 0.5f;
+	FlightSideMoveForce = 1500.0f;
+	MaxForwardThrust = 50000.0f;
+	ThrustStep = 100.0f;
+	CurrentThrust = 0.0f;
+
+	// 3. Trajectory (궤적 관련) 기본값 설정
 	bShowTrajectory = true;
-	TrajectoryMaxTime = 3.f;
-	TrajectoryFrequency = 15.f;
-	TrajectoryRadius = 10.f;
+	TrajectoryMaxTime = 3.0f;
+	TrajectoryFrequency = 15.0f;
+	TrajectoryRadius = 10.0f;
 
 	// 초기 상태 설정
 	CurrentState = EWingsPawnState::Ready;
@@ -111,6 +124,59 @@ void AWingsPawnBase::Tick(float DeltaTime)
 			}
 		}
 	}
+	else if (CurrentState == EWingsPawnState::Flying)
+	{
+		// 1. Velocity Alignment: 진행 방향 보정 (속도가 낮을 때 튀지 않도록 문턱값 상향)
+		FVector CurrentVelocity = MeshComponent->GetPhysicsLinearVelocity();
+		float Speed = CurrentVelocity.Size();
+		if (Speed > 100.f)
+		{
+			FVector TargetVelocity = GetActorForwardVector() * Speed;
+			// 가속도 기반으로 속도 방향을 정렬
+			FVector NewVelocity = FMath::VInterpTo(CurrentVelocity, TargetVelocity, DeltaTime, VelocityAlignmentSpeed);
+			MeshComponent->SetPhysicsLinearVelocity(NewVelocity);
+		}
+
+		// 2. 정밀한 물리 기반 Auto-Leveling (PD 제어기 적용)
+		if (bEnableAutoLeveling)
+		{
+			// 기체의 현재 회전 상태 (Quaternion)
+			FQuat CurrentQuat = GetActorQuat();
+			
+			// 기체의 우측 벡터가 월드의 Up 벡터와 얼마나 차이 나는지 계산 (Roll 오차)
+			FVector RightVector = CurrentQuat.GetRightVector();
+			float RollError = FVector::DotProduct(RightVector, FVector::UpVector);
+
+			// 현재 전방축 기준 회전 속도 (D 성분: 감쇠를 위함)
+			FVector AngVel = MeshComponent->GetPhysicsAngularVelocityInRadians();
+			float RollAngVel = FVector::DotProduct(AngVel, GetActorForwardVector());
+
+			// P_Gain: 돌아가려는 힘, D_Gain: 멈추려는 저항 (감쇠)
+			float P_Gain = AutoLevelingSpeed * 40.0f; 
+			float D_Gain = FMath::Sqrt(P_Gain) * 2.0f; // 임계 감쇠(Critical Damping)
+
+			// PD 제어 공식: Torque = (-Error * P) - (Velocity * D)
+			float LevelingTorque = (-RollError * P_Gain) - (RollAngVel * D_Gain);
+			
+			MeshComponent->AddTorqueInRadians(GetActorForwardVector() * LevelingTorque, NAME_None, true);
+		}
+
+		// 3. Bank-to-Turn: 기체가 기울어진 방향으로 자동으로 선회(Yaw) 토크 부여
+		FVector Right = GetActorRightVector();
+		float RollLean = FVector::DotProduct(Right, FVector::UpVector);
+		if (FMath::Abs(RollLean) > 0.05f)
+		{
+			// Roll 기울기에 비례하여 월드 Up 축 기준으로 Yaw 토크 부여
+			float YawTorque = -RollLean * BankToTurnAmount * 10.0f;
+			MeshComponent->AddTorqueInRadians(FVector::UpVector * YawTorque, NAME_None, true);
+		}
+
+		// 4. Constant Thrust: 현재 유지 중인 추진력 적용 (가속도로 적용)
+		if (CurrentThrust > 0.f)
+		{
+			MeshComponent->AddForce(GetActorForwardVector() * CurrentThrust, NAME_None, true);
+		}
+	}
 }
 
 void AWingsPawnBase::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -121,12 +187,18 @@ void AWingsPawnBase::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 	{
 		if (InputConfig)
 		{
-			// Aim (Axis2D)
+			// Aim & Flight Mouse (Axis2D)
 			EnhancedInputComponent->BindAction(InputConfig->IA_Aim, ETriggerEvent::Triggered, this, &AWingsPawnBase::Input_Aim);
+			EnhancedInputComponent->BindAction(InputConfig->IA_Aim, ETriggerEvent::Triggered, this, &AWingsPawnBase::Input_FlightMouse);
 
 			// Launch (Started: 충전 시작 / Completed: 발사)
 			EnhancedInputComponent->BindAction(InputConfig->IA_Launch, ETriggerEvent::Started, this, &AWingsPawnBase::Input_LaunchStarted);
 			EnhancedInputComponent->BindAction(InputConfig->IA_Launch, ETriggerEvent::Completed, this, &AWingsPawnBase::Input_LaunchCompleted);
+
+			// Flight Controls
+			EnhancedInputComponent->BindAction(InputConfig->IA_Pitch, ETriggerEvent::Triggered, this, &AWingsPawnBase::Input_PitchKeyboard);
+			EnhancedInputComponent->BindAction(InputConfig->IA_Roll, ETriggerEvent::Triggered, this, &AWingsPawnBase::Input_Roll);
+			EnhancedInputComponent->BindAction(InputConfig->IA_Thrust, ETriggerEvent::Triggered, this, &AWingsPawnBase::Input_Thrust);
 		}
 	}
 }
@@ -229,4 +301,54 @@ void AWingsPawnBase::UpdateTrajectory()
 
 	FPredictProjectilePathResult PathResult;
 	UGameplayStatics::PredictProjectilePath(this, PathParams, PathResult);
+}
+
+void AWingsPawnBase::Input_FlightMouse(const FInputActionValue& Value)
+{
+	if (CurrentState != EWingsPawnState::Flying) return;
+
+	FVector2D LookAxisVector = Value.Get<FVector2D>();
+
+	// bAccelChange = true 이므로 질량을 무시하고 직접적인 가속도를 가함
+	float PitchTorque = LookAxisVector.Y * FlightPitchSensitivity * 25.f;
+	float YawTorque = LookAxisVector.X * FlightYawSensitivity * 15.f;
+
+	MeshComponent->AddTorqueInRadians(GetActorRightVector() * PitchTorque, NAME_None, true);
+	MeshComponent->AddTorqueInRadians(GetActorUpVector() * YawTorque, NAME_None, true);
+}
+
+void AWingsPawnBase::Input_PitchKeyboard(const FInputActionValue& Value)
+{
+	if (CurrentState != EWingsPawnState::Flying) return;
+
+	float PitchValue = Value.Get<float>();
+	
+	// 키보드(W/S) 입력을 통한 Pitch 제어
+	float PitchTorque = PitchValue * FlightPitchSensitivity * 30.f;
+	MeshComponent->AddTorqueInRadians(GetActorRightVector() * PitchTorque, NAME_None, true);
+}
+
+void AWingsPawnBase::Input_Roll(const FInputActionValue& Value)
+{
+	if (CurrentState != EWingsPawnState::Flying) return;
+
+	float RollValue = Value.Get<float>();
+
+	// 1. Roll 토크 적용
+	float RollTorque = RollValue * FlightRollSensitivity * 30.f;
+	MeshComponent->AddTorqueInRadians(GetActorForwardVector() * RollTorque, NAME_None, true);
+
+	// 2. 옆으로 미는 힘(Lateral Force) 적용 (가속도로 적용)
+	FVector SideMoveForce = GetActorRightVector() * RollValue * FlightSideMoveForce * 0.01f;
+	MeshComponent->AddForce(SideMoveForce, NAME_None, true);
+}
+
+void AWingsPawnBase::Input_Thrust(const FInputActionValue& Value)
+{
+	if (CurrentState != EWingsPawnState::Flying) return;
+
+	float ThrustInput = Value.Get<float>();
+	
+	// 추진력 조절 (가속도 수치로 조절됨)
+	CurrentThrust = FMath::Clamp(CurrentThrust + (ThrustInput * ThrustStep), 0.f, MaxForwardThrust);
 }

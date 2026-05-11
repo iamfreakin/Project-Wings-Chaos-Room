@@ -109,34 +109,45 @@
 
 ---
 
-## [1주차 4일차] 궤적 가이드라인 구현 (완료)
+## [1주차 5일차] 3축 비행 물리 및 조종성 리파인 (완료)
 
 ### 1. 목표
-- 기체 발사 전(Ready 상태) 예상 비행 궤적을 시각적으로 표시하여 플레이어의 조준을 돕는다.
-- 파워 충전량 및 조준 각도에 따라 실시간으로 변화하는 궤적을 구현한다.
+- 마우스와 키보드를 조합한 하이브리드 비행 조종 시스템 구축.
+- 비행 중 회전 감도를 기존 대비 10배 하향하여 묵직하고 정밀한 조종감 제공.
+- A/D 입력 시 기체 기울임(Roll)과 동시에 해당 방향으로 옆으로 미는 힘(Lateral Force)을 가해 기동성 개선.
+- 뱅크-투-턴(Bank-to-Turn) 및 자동 수평 유지 로직을 추가하여 자연스러운 비행 구현.
+- 엔진 기본 중력을 유지하여 환경 파괴 등 물리 상호작용 호환성 확보.
 
 ### 2. 영향 범위
-- `ProjectWings/Source/ProjectWings/Public/Pawn/WingsPawnBase.h`
-- `ProjectWings/Source/ProjectWings/Private/Pawn/WingsPawnBase.cpp`
+- `ProjectWings/Source/ProjectWings/Public/Pawn/WingsPawnBase.h` (변수 및 함수 선언)
+- `ProjectWings/Source/ProjectWings/Private/Pawn/WingsPawnBase.cpp` (물리 로직 구현)
 
 ### 3. 상세 단계 (C++ Implementation)
-1. **변수 추가**: `bShowTrajectory`, `TrajectoryMaxTime`, `TrajectoryFrequency`, `TrajectoryRadius` 선언.
-2. **궤적 업데이트 로직**: `UpdateTrajectory()` 함수 구현. `UGameplayStatics::PredictProjectilePath`를 사용하여 물리 궤적 계산.
-3. **실시간 갱신**: `Tick()` 함수에서 `Ready` 상태일 때 매 프레임 `UpdateTrajectory()` 호출.
-4. **시각화**: `FPredictProjectilePathParams`의 `DrawDebugType`을 `ForOneFrame`으로 설정하여 디버그 라인 출력.
+1. **변수 선언**: 각 축별 감도(`FlightPitchSensitivity` 등), 추진력, 옆으로 미는 힘, 뱅크-투-턴 강도 변수 추가.
+2. **입력 바인딩**: `SetupPlayerInputComponent`에서 `IA_Pitch`, `IA_Roll`, `IA_Thrust` 액션 연동.
+3. **토크 및 힘 제어**:
+   - `Input_Roll`: Roll 토크와 동시에 `AddForce`로 측면 이동 힘 적용.
+   - `Input_FlightMouse`: 마우스 입력에 낮은 감도 적용하여 토크 부여.
+4. **비행 물리 보정 (`Tick`)**:
+   - **속도 정렬**: 진행 방향이 기체의 전방을 서서히 따라가도록 보정 (미끄러짐 방지).
+   - **자동 수평 유지**: 입력이 없을 때 기체를 수평으로 서서히 복원.
+   - **뱅크-투-턴**: 기체가 기울어진 방향으로 자동으로 선회(Yaw) 토크 부여.
 
 ### 4. Editor Workflow (중요)
-1. **궤적 설정**:
-   - `BP_WingsPawn`에서 `TrajectoryMaxTime`: **3.0**, `TrajectoryFrequency`: **15.0**, `TrajectoryRadius`: **10.0** 설정.
-2. **조작**:
-   - 마우스를 움직여 조준을 변경하거나 왼쪽 버튼을 눌러 파워를 충전할 때 가이드라인이 실시간으로 변하는지 확인.
+1. **입력 에셋 설정**:
+   - `IA_Pitch`, `IA_Roll`, `IA_Thrust` (Value Type: Axis1D) 생성 및 `IMC_WingsPlayer` 등록.
+2. **데이터 에셋 업데이트**:
+   - `DA_WingsInput`에 생성한 액션들을 할당.
+3. **수치 밸런싱**:
+   - `BP_WingsPawn`에서 감도(`1.0`, `0.8`, `1.2`), 옆으로 미는 힘(`15,000`), 뱅크-투-턴 강도(`0.5`) 등 기본값 확인 및 조정.
 
 ### 5. Success Criteria
-- 조준 각도를 바꿀 때 궤적이 즉각적으로 반응함.
-- 파워 충전 중일 때 궤적이 충전량에 비례하여 길어짐.
-- 실제 발사 시 기체가 표시된 가이드라인을 거의 정확하게 따라감.
+- 마우스 조작 시 회전이 묵직하게 이루어지며 정밀한 조종이 가능함.
+- A/D 키를 누를 때 기체가 옆으로 미끄러지듯 이동함.
+- 기체를 옆으로 기울이면 자동으로 해당 방향으로 서서히 선회함.
+- 조작을 멈추면 기체가 서서히 수평을 되찾음.
 
 ### 6. 검증 방법
-- PIE 실행 후 가이드라인이 가리키는 특정 지점을 조준하여 발사.
-- 기체가 해당 지점 근처에 착지하거나 충돌하는지 수동 확인.
+- PIE 실행 후 기체 발사, 공중에서 3축 조작 및 기동성 확인.
+- 궤적 가이드라인이 정상적으로 표시되는지 확인.
 
