@@ -60,10 +60,10 @@ protected:
 
     /** 발사 성능 (나중에 강화 시스템으로 확장 가능) */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Launcher | Stats")
-    float MaxLaunchForce = 1500000.f;
+    float MaxLaunchForce = 10000.f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Launcher | Stats")
-    float ChargeSpeed = 0.5f;
+    float ChargeSpeed = 0.2f;
 
     /** 상태 변수 */
     float CurrentLaunchPower = 0.f;
