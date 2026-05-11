@@ -15,18 +15,18 @@ class UWingsInputConfigData;
 struct FInputActionValue;
 
 /**
- * 기체의 현재 상태를 정의합니다.
+ * 기체의 현재 상태를 정의합니다. (Ready 상태 제거)
  */
 UENUM(BlueprintType)
 enum class EWingsPawnState : uint8
 {
-	Ready UMETA(DisplayName = "Ready"),     // 발사 대기 (조준 중)
 	Flying UMETA(DisplayName = "Flying"),   // 비행 중 (조종 가능)
 	Crashed UMETA(DisplayName = "Crashed")  // 추락/충돌 (조종 불가)
 };
 
 /**
  * 프로젝트의 모든 비행 기체의 베이스가 되는 Pawn 클래스입니다.
+ * 이제 발사 로직은 AWingsLauncher에서 담당합니다.
  */
 UCLASS()
 class PROJECTWINGS_API AWingsPawnBase : public APawn
@@ -48,22 +48,14 @@ protected:
 	/** 상태 변경 함수 */
 	void SetPawnState(EWingsPawnState NewState);
 
-	/** 입력 처리 함수 */
-	void Input_Aim(const FInputActionValue& Value);
-	void Input_LaunchStarted(const FInputActionValue& Value);
-	void Input_LaunchCompleted(const FInputActionValue& Value);
-
 	/** 비행 중 입력 처리 */
 	void Input_FlightMouse(const FInputActionValue& Value);
 	void Input_PitchKeyboard(const FInputActionValue& Value);
 	void Input_Roll(const FInputActionValue& Value);
 	void Input_Thrust(const FInputActionValue& Value);
 
-	/** 궤적 가이드라인 업데이트 */
-	void UpdateTrajectory();
-
 protected:
-	/** 현재 기체의 상태 (Ready, Flying, Crashed) */
+	/** 현재 기체의 상태 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Wings|State")
 	EWingsPawnState CurrentState;
 
@@ -74,10 +66,6 @@ protected:
 	/** 입력 액션 데이터 에셋 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Wings|Input")
 	TObjectPtr<UWingsInputConfigData> InputConfig;
-
-	/** 조준 대기 상태(Ready)에서의 마우스 회전 속도 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Stats")
-	float AimRotationSpeed;
 
 	/** 비행 중 상하(Pitch) 회전 감도 (마우스/키보드 공용) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Stats|Flight")
@@ -123,38 +111,6 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Wings|Stats|Flight")
 	float CurrentThrust;
 
-	/** 발사 시 가해질 수 있는 최대 힘 (파워 100% 기준) */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Stats")
-	float MaxLaunchForce;
-
-	/** 발사 파워 충전 속도 (높을수록 빠르게 충전됨) */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Stats")
-	float ChargeSpeed;
-
-	/** 현재 충전된 발사 파워 (0.0 ~ 1.0) */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Wings|Stats")
-	float CurrentLaunchPower;
-
-	/** 현재 파워 충전 중인지 여부 */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Wings|Stats")
-	bool bIsCharging;
-
-	/** 궤적 가이드라인 표시 여부 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Trajectory")
-	bool bShowTrajectory;
-
-	/** 궤적 예측 최대 시간 (초 단위) */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Trajectory")
-	float TrajectoryMaxTime;
-
-	/** 궤적 계산 빈도 (높을수록 정밀하지만 비용 증가) */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Trajectory")
-	float TrajectoryFrequency;
-
-	/** 궤적 충돌 판정 반지름 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Trajectory")
-	float TrajectoryRadius;
-
 	/** 기체 물리 및 메쉬를 담당하는 루트 컴포넌트 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Wings|Components", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UStaticMeshComponent> MeshComponent;
@@ -171,13 +127,10 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Wings|Components", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UNiagaraComponent> EngineTrailComponent;
 
-	/** 발사 시 가해질 최소 기본 물리적 힘 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Stats", meta = (AllowPrivateAccess = "true"))
-	float InitialLaunchForce;
-
 public:
 	/** 컴포넌트 게터 */
 	UStaticMeshComponent* GetMeshComponent() const { return MeshComponent.Get(); }
 	USpringArmComponent* GetSpringArmComponent() const { return SpringArmComponent.Get(); }
 	UCameraComponent* GetCameraComponent() const { return CameraComponent.Get(); }
+	UInputMappingContext* GetDefaultMappingContext() const { return DefaultMappingContext.Get(); }
 };

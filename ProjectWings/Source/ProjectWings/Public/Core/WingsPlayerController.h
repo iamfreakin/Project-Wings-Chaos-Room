@@ -16,5 +16,12 @@ class PROJECTWINGS_API AWingsPlayerController : public APlayerController
 
 public:
 	AWingsPlayerController();
+
+protected:
+    virtual void BeginPlay() override;
+
+public:
+    /** 발사 시 기체로 조종권을 넘기는 함수 */
+    void TransitionToFlight(APawn* FlightPawn, APawn* PreviousPawn = nullptr);
 	
 };

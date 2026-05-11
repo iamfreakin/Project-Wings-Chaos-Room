@@ -119,8 +119,8 @@
 - 엔진 기본 중력을 유지하여 환경 파괴 등 물리 상호작용 호환성 확보.
 
 ### 2. 영향 범위
-- `ProjectWings/Source/ProjectWings/Public/Pawn/WingsPawnBase.h` (변수 및 함수 선언)
-- `ProjectWings/Source/ProjectWings/Private/Pawn/WingsPawnBase.cpp` (물리 로직 구현)
+- `ProjectWings/Source/ProjectWings/Public/Pawn/WingsPawnBase.h`
+- `ProjectWings/Source/ProjectWings/Private/Pawn/WingsPawnBase.cpp`
 
 ### 3. 상세 단계 (C++ Implementation)
 1. **변수 선언**: 각 축별 감도(`FlightPitchSensitivity` 등), 추진력, 옆으로 미는 힘, 뱅크-투-턴 강도 변수 추가.
@@ -150,4 +150,52 @@
 ### 6. 검증 방법
 - PIE 실행 후 기체 발사, 공중에서 3축 조작 및 기동성 확인.
 - 궤적 가이드라인이 정상적으로 표시되는지 확인.
+
+---
+
+## [1주차 6일차] 아키텍처 리팩토링: Launcher와 Projectile 분리 (예정)
+
+### 1. 목표
+- `WingsPawnBase`에 집중된 책임을 `WingsLauncher`(발사대)와 `WingsPawn`(발사체)으로 분리.
+- 발사 전(조준, 충전)과 발사 후(비행)의 상태 머신을 클래스 단위로 분리하여 유지보수성 향상.
+- `PlayerController`를 통한 동적 조종권(Possess) 전환 시스템 구축.
+
+### 2. 영향 범위
+- `ProjectWings/Source/ProjectWings/Public/Pawn/WingsPawnBase.h` (Ready 상태 및 발사 로직 제거)
+- `ProjectWings/Source/ProjectWings/Public/Launcher/WingsLauncher.h` (신규 생성)
+- `ProjectWings/Source/ProjectWings/Public/Core/WingsPlayerController.h` (Possess 로직 추가)
+
+### 3. 상세 단계 (C++ Implementation)
+1. **AWingsLauncher 구현**:
+   - `Ready` 상태의 조준, 충전, 궤적 예측 로직을 이식.
+   - `LaunchProjectile()` 함수를 통해 Pawn 생성 또는 활성화.
+2. **AWingsPawnBase 경량화**:
+   - 발사 관련 변수 및 입력 바인딩 제거.
+   - 외부에서 호출 가능한 `Launch(FVector Velocity)` 인터페이스 구현.
+3. **Controller 로직 업데이트**:
+   - 시작 시 Launcher 제어 -> 발사 시 Pawn 제어로 전환하는 흐름 구현.
+
+### 4. Editor Workflow (중요)
+1. **블루프린트 생성**: `AWingsLauncher`를 상속받은 `BP_WingsLauncher` 생성.
+2. **월드 구성**: 레벨에 `BP_WingsLauncher` 배치 및 초기 Pawn 설정.
+3. **입력 매핑**: Launcher용 IMC와 Pawn용 IMC를 상황에 맞게 교체하도록 설정.
+
+### 5. Success Criteria
+- 게임 시작 시 발사대에서 조준 및 파워 충전이 정상 동작함.
+- 발사 버튼 클릭 시 조종권이 기체로 부드럽게 전환되며 비행이 시작됨.
+- 각 클래스의 코드가 역할에 맞게 분리되어 가독성이 향상됨.
+
+### 6. 검증 방법
+- PIE 실행 후 발사 시퀀스 전체 테스트 (조준 -> 발사 -> 비행 전환).
+
+---
+
+## [1주차 7일차] 연료 및 감속 시스템 (예정)
+
+### 1. 목표
+- 비행 중 지속적으로 소모되는 연료 시스템 구현.
+- 연료 소진 시 물리적 감속 및 낙하 로직 추가.
+- UI 연동을 위한 기초 데이터 바인딩.
+
+... (이하 생략)
 

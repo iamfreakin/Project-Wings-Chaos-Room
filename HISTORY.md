@@ -78,3 +78,46 @@
 ### Technical Details
 - `FPredictProjectilePathParams`를 활용하여 실제 물리 엔진과 동일한 중력 및 충돌 판정을 궤적에 반영.
 - `Tick` 내에서의 효율적인 업데이트를 위해 조준 상태(`Ready`)에서만 연산 수행.
+
+## [2026-05-11] 아키텍처 리팩토링 결정 및 설계
+
+### Added
+- **Launcher-Projectile 분리 설계**:
+    - `AWingsPawnBase`에 집중된 조준/충전/비행 로직을 `AWingsLauncher`와 `AWingsPawn`으로 분리하기 위한 설계 확정.
+    - `AWingsPlayerController`를 통한 동적 조종권 전환 시나리오 수립.
+
+### Planned
+- `AWingsLauncher` 클래스 신규 생성 및 조준/궤적 로직 이식.
+- `AWingsPawnBase`에서 발사 관련 레거시 코드 제거 및 비행 전담화.
+
+## [2026-05-11] WingsLauncher 컴파일 오류 해결
+
+### Fixed
+- **`WingsLauncher.h` 식별자 오류**: `AWingsPawnBase` 클래스에 대한 전방 선언(Forward Declaration) 누락으로 인한 `TSubclassOf` 템플릿 인수 오류 해결.
+- **`WingsLauncher.cpp` 참조 오류**: `WingsPawnBase.h` 및 `WingsPlayerController.h` 헤더 포함 누락으로 인한 `SpawnActor` 및 `Cast` 호출 오류 해결.
+- **빌드 타겟 수정**: 빌드 스크립트 실행 시 `ProjectWingsEditor` 타겟을 명시하여 빌드 환경 정규화.
+
+### Technical Details
+- Unreal Engine의 IWYU(Include What You Use) 원칙에 따라 필요한 최소한의 헤더만 포함하여 컴파일 속도 최적화.
+- `TSubclassOf` 사용 시 불완전한 형식(Incomplete Type) 문제를 전방 선언으로 해결.
+
+## [2026-05-11] 아키텍처 리팩토링: Launcher-Projectile 분리 및 입력 전환 구현
+
+### Added
+- **`AWingsLauncher` 클래스 활성화**:
+  - `BeginPlay`에서 `LauncherMappingContext`를 동적으로 추가하는 로직 구현.
+  - `GetLauncherMappingContext()` 게터를 통해 컨트롤러와의 상호작용 지원.
+- **`AWingsPlayerController` 기능 확장**:
+  - `TransitionToFlight(APawn* FlightPawn, APawn* PreviousPawn)` 구현.
+  - 조종권 전환 시 이전 IMC 제거 및 새로운 IMC 주입 로직 통합.
+- **`AWingsPawnBase` 게터 추가**:
+  - `GetDefaultMappingContext()`를 통해 컨트롤러에서 IMC를 제어할 수 있도록 개선.
+
+### Changed
+- **입력 흐름 개선**: 기체(`WingsPawnBase`)의 `BeginPlay`에서 IMC를 추가하던 방식을 제거하고, 컨트롤러가 전환 시점에 명시적으로 관리하도록 변경하여 입력 충돌 방지.
+- **클래스 캡슐화**: 필요한 프로퍼티와 게터를 정돈하여 클래스 간 의존성을 명확히 정의.
+
+### Technical Details
+- Unreal Engine의 `UEnhancedInputLocalPlayerSubsystem`을 활용한 런타임 IMC 교체 시스템 구축.
+- `Possess`와 IMC 전환을 원자적으로 처리하여 사용자 경험(UX) 끊김 방지.
+
