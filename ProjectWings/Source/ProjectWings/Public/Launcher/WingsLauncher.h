@@ -25,6 +25,12 @@ public:
     /** 게터 */
     UInputMappingContext* GetLauncherMappingContext() const { return LauncherMappingContext.Get(); }
 
+    UFUNCTION(BlueprintPure, Category = "Wings|Launcher")
+    float GetCurrentLaunchPower() const { return CurrentLaunchPower; }
+
+    UFUNCTION(BlueprintPure, Category = "Wings|Launcher")
+    bool IsCharging() const { return bIsCharging; }
+
 protected:
 	virtual void BeginPlay() override;
 

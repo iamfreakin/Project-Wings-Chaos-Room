@@ -5,6 +5,7 @@
 #include "Core/WingsGameState.h"
 #include "Core/WingsPlayerController.h"
 #include "Pawn/WingsPawnBase.h"
+#include "UI/WingsHUD.h"
 
 AWingsGameMode::AWingsGameMode()
 {
@@ -12,4 +13,5 @@ AWingsGameMode::AWingsGameMode()
 	GameStateClass = AWingsGameState::StaticClass();
 	PlayerControllerClass = AWingsPlayerController::StaticClass();
 	DefaultPawnClass = AWingsPawnBase::StaticClass();
+	HUDClass = AWingsHUD::StaticClass();
 }
