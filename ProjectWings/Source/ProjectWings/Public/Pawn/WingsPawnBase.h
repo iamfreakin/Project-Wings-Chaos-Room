@@ -54,10 +54,18 @@ protected:
 	void Input_Roll(const FInputActionValue& Value);
 	void Input_Thrust(const FInputActionValue& Value);
 
+	/** 자유 시점(Free Look) 입력 처리 */
+	void Input_FreeLookStarted(const FInputActionValue& Value);
+	void Input_FreeLookCompleted(const FInputActionValue& Value);
+
 protected:
 	/** 현재 기체의 상태 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Wings|State")
 	EWingsPawnState CurrentState;
+
+	/** 자유 시점 활성화 여부 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Wings|State")
+	bool bIsFreeLooking;
 
 	/** 입력 매핑 컨텍스트 (Enhanced Input) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Wings|Input")
@@ -110,6 +118,42 @@ protected:
 	/** 현재 기체가 유지하고 있는 추진력 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Wings|Stats|Flight")
 	float CurrentThrust;
+
+	/** 카메라 지연(Lag) 속도 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Stats|Camera")
+	float CameraLagSpeed;
+
+	/** 카메라 회전 지연(Rotation Lag) 속도 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Stats|Camera")
+	float CameraRotationLagSpeed;
+
+	/** 최소 시야각 (정지/저속 시) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Stats|Camera")
+	float MinFOV;
+
+	/** 최대 시야각 (최고 속도 시) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Stats|Camera")
+	float MaxFOV;
+
+	/** 최소 카메라 거리 (정지/저속 시) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Stats|Camera")
+	float MinArmLength;
+
+	/** 최대 카메라 거리 (최고 속도 시) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Stats|Camera")
+	float MaxArmLength;
+
+	/** 카메라 효과가 최대로 적용되는 속도 임계값 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Stats|Camera")
+	float DynamicCameraSpeedThreshold;
+
+	/** 자유 시점 회전 감도 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Stats|Camera")
+	float FreeLookSensitivity;
+
+	/** 자유 시점 종료 후 카메라 복귀 속도 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Stats|Camera")
+	float CameraReturnSpeed;
 
 	/** 최대 연료량 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Stats|Fuel")

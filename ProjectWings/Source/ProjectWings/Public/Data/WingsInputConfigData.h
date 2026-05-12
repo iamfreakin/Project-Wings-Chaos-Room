@@ -33,5 +33,8 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Wings|Input|Flying")
 	TObjectPtr<UInputAction> IA_Thrust;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Wings|Input|Flying")
+	TObjectPtr<UInputAction> IA_FreeLook;
 	
 };

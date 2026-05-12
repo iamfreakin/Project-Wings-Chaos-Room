@@ -35,6 +35,12 @@ AWingsPawnBase::AWingsPawnBase()
 	SpringArmComponent->bInheritYaw = true;
 	SpringArmComponent->bInheritRoll = true;
 
+	// 카메라 지연 및 회전 지연 활성화
+	SpringArmComponent->bEnableCameraLag = true;
+	SpringArmComponent->bEnableCameraRotationLag = true;
+	SpringArmComponent->CameraLagSpeed = 10.0f;
+	SpringArmComponent->CameraRotationLagSpeed = 8.0f;
+
 	// 카메라 설정
 	CameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComponent"));
 	CameraComponent->SetupAttachment(SpringArmComponent);
@@ -57,6 +63,17 @@ AWingsPawnBase::AWingsPawnBase()
 	ThrustStep = 100.0f;
 	CurrentThrust = 0.0f;
 
+	// 카메라 동적 효과 기본값
+	CameraLagSpeed = 10.0f;
+	CameraRotationLagSpeed = 8.0f;
+	MinFOV = 90.0f;
+	MaxFOV = 110.0f;
+	MinArmLength = 800.0f;
+	MaxArmLength = 1000.0f;
+	DynamicCameraSpeedThreshold = 50000.0f;
+	FreeLookSensitivity = 0.5f;
+	CameraReturnSpeed = 5.0f;
+
 	// 연료 관련 기본값 설정
 	MaxFuel = 100.0f;
 	CurrentFuel = 100.0f;
@@ -65,6 +82,7 @@ AWingsPawnBase::AWingsPawnBase()
 
 	// 초기 상태 설정
 	CurrentState = EWingsPawnState::Flying;
+	bIsFreeLooking = false;
 }
 
 void AWingsPawnBase::BeginPlay()
@@ -150,6 +168,27 @@ void AWingsPawnBase::Tick(float DeltaTime)
 		{
 			MeshComponent->AddForce(GetActorForwardVector() * CurrentThrust, NAME_None, true);
 		}
+
+		// 5. Dynamic Camera (FOV & Distance)
+		float CurrentSpeed = MeshComponent->GetPhysicsLinearVelocity().Size();
+		float SpeedAlpha = FMath::Clamp(CurrentSpeed / DynamicCameraSpeedThreshold, 0.f, 1.f);
+
+		float TargetFOV = FMath::Lerp(MinFOV, MaxFOV, SpeedAlpha);
+		float TargetArmLength = FMath::Lerp(MinArmLength, MaxArmLength, SpeedAlpha);
+
+		CameraComponent->SetFieldOfView(FMath::FInterpTo(CameraComponent->FieldOfView, TargetFOV, DeltaTime, 2.0f));
+		SpringArmComponent->TargetArmLength = FMath::FInterpTo(SpringArmComponent->TargetArmLength, TargetArmLength, DeltaTime, 2.0f);
+
+		// 6. Free Look Smooth Return
+		if (!bIsFreeLooking)
+		{
+			FRotator CurrentRelativeRot = SpringArmComponent->GetRelativeRotation();
+			if (!CurrentRelativeRot.IsNearlyZero())
+			{
+				FRotator NewRelativeRot = FMath::RInterpTo(CurrentRelativeRot, FRotator::ZeroRotator, DeltaTime, CameraReturnSpeed);
+				SpringArmComponent->SetRelativeRotation(NewRelativeRot);
+			}
+		}
 	}
 }
 
@@ -166,6 +205,10 @@ void AWingsPawnBase::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 			EnhancedInputComponent->BindAction(InputConfig->IA_Pitch, ETriggerEvent::Triggered, this, &AWingsPawnBase::Input_PitchKeyboard);
 			EnhancedInputComponent->BindAction(InputConfig->IA_Roll, ETriggerEvent::Triggered, this, &AWingsPawnBase::Input_Roll);
 			EnhancedInputComponent->BindAction(InputConfig->IA_Thrust, ETriggerEvent::Triggered, this, &AWingsPawnBase::Input_Thrust);
+
+			// 자유 시점 입력 바인딩
+			EnhancedInputComponent->BindAction(InputConfig->IA_FreeLook, ETriggerEvent::Started, this, &AWingsPawnBase::Input_FreeLookStarted);
+			EnhancedInputComponent->BindAction(InputConfig->IA_FreeLook, ETriggerEvent::Completed, this, &AWingsPawnBase::Input_FreeLookCompleted);
 		}
 	}
 }
@@ -192,11 +235,24 @@ void AWingsPawnBase::Input_FlightMouse(const FInputActionValue& Value)
 	if (CurrentState != EWingsPawnState::Flying) return;
 
 	FVector2D LookAxisVector = Value.Get<FVector2D>();
-	float PitchTorque = LookAxisVector.Y * FlightPitchSensitivity * 25.f;
-	float YawTorque = LookAxisVector.X * FlightYawSensitivity * 15.f;
 
-	MeshComponent->AddTorqueInRadians(GetActorRightVector() * PitchTorque, NAME_None, true);
-	MeshComponent->AddTorqueInRadians(GetActorUpVector() * YawTorque, NAME_None, true);
+	if (bIsFreeLooking)
+	{
+		// 자유 시점 중: 스프링 암의 상대 회전값 변경
+		FRotator NewRotation = SpringArmComponent->GetRelativeRotation();
+		NewRotation.Pitch = FMath::Clamp(NewRotation.Pitch + (LookAxisVector.Y * FreeLookSensitivity), -80.f, 80.f);
+		NewRotation.Yaw += (LookAxisVector.X * FreeLookSensitivity);
+		SpringArmComponent->SetRelativeRotation(NewRotation);
+	}
+	else
+	{
+		// 일반 비행 중: 기체에 토크 부여
+		float PitchTorque = LookAxisVector.Y * FlightPitchSensitivity * 25.f;
+		float YawTorque = LookAxisVector.X * FlightYawSensitivity * 15.f;
+
+		MeshComponent->AddTorqueInRadians(GetActorRightVector() * PitchTorque, NAME_None, true);
+		MeshComponent->AddTorqueInRadians(GetActorUpVector() * YawTorque, NAME_None, true);
+	}
 }
 
 void AWingsPawnBase::Input_PitchKeyboard(const FInputActionValue& Value)
@@ -226,4 +282,14 @@ void AWingsPawnBase::Input_Thrust(const FInputActionValue& Value)
 
 	float ThrustInput = Value.Get<float>();
 	CurrentThrust = FMath::Clamp(CurrentThrust + (ThrustInput * ThrustStep), 0.f, MaxForwardThrust);
+}
+
+void AWingsPawnBase::Input_FreeLookStarted(const FInputActionValue& Value)
+{
+	bIsFreeLooking = true;
+}
+
+void AWingsPawnBase::Input_FreeLookCompleted(const FInputActionValue& Value)
+{
+	bIsFreeLooking = false;
 }
