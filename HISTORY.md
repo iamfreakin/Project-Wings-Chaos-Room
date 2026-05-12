@@ -121,17 +121,7 @@
 - Unreal Engine의 `UEnhancedInputLocalPlayerSubsystem`을 활용한 런타임 IMC 교체 시스템 구축.
 - `Possess`와 IMC 전환을 원자적으로 처리하여 사용자 경험(UX) 끊김 방지.
 
-## [2026-05-12] 컴파일 오류 해결 및 코드 정제
-
-### Fixed
-- **`WingsPawnBase.cpp` 중복 제거**: 파일 후반부에 잘못 포함된 대규모 중복 함수 정의 블록을 삭제하여 `C2084`(이미 본문이 있음) 및 `C2065`(미선언 식별자) 오류 해결.
-- **`LogWings` 식별자 오류**: `WingsPlayerController.cpp`와 `WingsPawnBase.cpp`에서 `ProjectWings.h` 인클루드 경로를 프로젝트 구조에 맞게 수정하여 로그 카테고리 인식 문제 해결.
-- **접근 권한 오류**: `WingsLauncher.cpp`에서 발생하던 `SetPawnState` 접근 권한 문제는 `WingsPawnBase.cpp`의 중복 정의가 제거되면서 정상적인 헤더 정보를 참조하게 되어 해결됨.
-
-### Improved
-- **빌드 안정성**: 전체 프로젝트 리빌드를 통해 모든 모듈 간 참조 및 컴파일 무결성 확인.
-
-## [2026-05-11] 연료 및 감속 시스템 구현 (Day 7)
+## [2026-05-11] 연료 및 감속 시스템 구현
 
 ### Added
 - **연료 시스템 구축**:
@@ -150,3 +140,23 @@
 - `FMath::Max` 및 `FMath::Clamp`를 사용하여 연료 수치가 음수가 되지 않도록 보호.
 - 물리 엔진의 Damping 계수를 동적으로 조절하여 엔진 정지 상황을 시각화.
 
+## [2026-05-12] Chaos 파괴 시스템 고도화 및 UE 5.6 호환성 확보
+
+### Added
+- **질량 연동 파괴 시스템**:
+  - `UWingsFlightData`에 `DestructionMassReference` 변수 추가 (파괴력 계산 기준 질량).
+  - `AWingsPawnBase::SpawnDestructionField` 로직에서 기체의 실제 질량(Mass) 계수 반영.
+  - 질량에 비례하여 충격파 강도(`Strength`)와 반경(`Radius`)이 증폭되도록 설계.
+- **연쇄 파괴(Chain Destruction) 로직**:
+  - `AWingsDestructibleActor`에서 `OnChaosBreakEvent`를 활용한 주변 파괴력 전파(`ApplyExternalStrain`) 구현.
+  - 파편 충돌 데미지 활성화 옵션 추가.
+
+### Fixed
+- **UE 5.6 C1083 헤더 미포함 오류**:
+  - `Chaos/ChaosGameplayEventTypes.h` 경로가 UE 5.6에서 변경됨에 따라 `Chaos/ChaosGameplayEventDispatcher.h`로 인클루드 경로 수정.
+  - `ProjectWings.Build.cs`에 `Chaos` 모듈 의존성 추가.
+- **파괴력 제한 문제**: `URadialFalloff`의 `MaxRange` 인자가 하드코딩된 값으로 인해 파괴력이 제한되던 결함 수정.
+
+### Improved
+- **물리 분석**: `AWingsPawnBase::OnMeshHit` 시 `NormalImpulse` 값을 로그로 출력하여 파괴 위력 튜닝 지원.
+- **코드 무결성**: `WingsPawnBase.cpp` 내 중복 정의된 함수 블록을 제거하여 컴파일 안정성 확보.

@@ -15,6 +15,7 @@ public class ProjectWings : ModuleRules
 			"InputCore", 
 			"EnhancedInput", 
 			"Niagara", 
+			"Chaos",
 			"ChaosSolverEngine", 
 			"GeometryCollectionEngine", 
 			"FieldSystemEngine", 

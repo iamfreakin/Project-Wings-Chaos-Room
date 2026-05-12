@@ -168,7 +168,7 @@
 
 ### 3. 상세 단계 (C++ Implementation)
 1. **AWingsLauncher 구현**: 조준, 충전, 궤적 예측 로직 이식 및 `ProjectileClass` 스폰 기능 구현.
-2. **AWingsPawnBase 경량화**: 발사 관련 레거시 코드 제거 및 비행 물리 전담화.
+2. **AWingsPawnBase 경량화**: 발사 관련 레거시 코드 제거 및 비행 전담화.
 3. **Controller 로직 업데이트**: 
    - `TransitionToFlight` 구현: 조종권 변경 및 IMC 교체(Launcher IMC 제거 -> Pawn IMC 추가).
    - `BeginPlay`: `FInputModeGameOnly` 설정 및 마우스 커서 숨김으로 조작감 개선.
@@ -247,6 +247,8 @@
 - 우클릭을 떼면 카메라가 기체 정후방으로 자연스럽게 복귀.
 
 ### 6. 검증 방법
+- PIE 실행 후 급회전 및 자유 시점 기능 수동 확인.
+
 ---
 
 ## [1주차 9일차] 1주차 통합 디버깅 및 데이터 기반 리파인 (완료)
@@ -285,3 +287,39 @@
 - PIE 실행 후 고고도 발사 -> 연료 고갈 대기 -> 다이빙 및 관성 낙하 거동 확인.
 - 데이터 에셋 수치 변경에 따른 비행 특성 변화 수동 확인.
 
+---
+
+## [2주차 10-11일차] 물리 기반 파괴 로직 강화 및 연쇄 파괴 구현 (완료)
+
+### 1. 목표
+- 사용자의 피드백을 반영하여, 기체의 **질량(Mass)**이 파괴 연출과 위력에 직접적인 영향을 주도록 시스템을 고도화.
+- 현재 속도(Speed)에만 의존하던 `SpawnDestructionField` 로직에 질량 계수를 도입하여 무거운 기체일수록 강력한 충격파 발생.
+- `AWingsDestructibleActor`를 통한 연쇄 파괴(Chain Destruction) 시스템 구축.
+- UE 5.6 최신 환경에 대응하는 Chaos 헤더 구조 최적화.
+
+### 2. 영향 범위
+- `ProjectWings/Source/ProjectWings/Public/Data/WingsFlightData.h`
+- `ProjectWings/Source/ProjectWings/Private/Pawn/WingsPawnBase.cpp`
+- `ProjectWings/Source/ProjectWings/Public/Environment/WingsDestructibleActor.h`
+- `ProjectWings/Source/ProjectWings/ProjectWings.Build.cs`
+
+### 3. 상세 단계 (C++ Implementation)
+1. **질량 연동**: `WingsFlightData`에 기준 질량을 추가하고, `SpawnDestructionField`에서 질량 배율을 적용하여 파괴 반경과 강도를 동적으로 계산.
+2. **연쇄 파괴 로직**: `AWingsDestructibleActor`에서 `OnChaosBreakEvent`를 바인딩하고, 파괴 발생 시 `ApplyExternalStrain`을 사용하여 주변으로 파괴 에너지를 전파.
+3. **UE 5.6 대응**:
+    - `ProjectWings.Build.cs`에 `Chaos` 모듈 추가.
+    - `WingsDestructibleActor.h`의 인클루드 경로를 `Chaos/ChaosGameplayEventDispatcher.h`로 수정하여 `FChaosBreakEvent` 인식 문제 해결.
+
+### 4. Editor Workflow (중요)
+1. **데이터 에셋**: `DA_WingsFlight_Default`에서 `Destruction Mass Reference` 값 조정.
+2. **질량 테스트**: `BP_WingsPawn`의 Mesh 컴포넌트에서 질량을 변경하며 파괴력 차이 확인.
+3. **환경 에셋**: `BP_Destructible_Cube` 등 Geometry Collection을 사용하는 액터에 `AWingsDestructibleActor`를 베이스로 적용.
+
+### 5. Success Criteria
+- 동일 속도에서 질량이 높을수록 파괴 반경과 파편 비산 힘이 체감될 정도로 증가함.
+- 구조물 파괴 시 주변 구조물이 연쇄적으로 붕괴하는 도미노 효과 확인.
+- UE 5.6 환경에서 C1083 헤더 미포함 에러 없이 빌드 성공.
+
+### 6. 검증 방법
+- 질량 100kg vs 1000kg 비교 테스트 수행.
+- 밀집된 구조물에 충돌하여 연쇄 파괴 거동 수동 확인.

@@ -12,6 +12,9 @@
 #include "Data/WingsInputConfigData.h"
 #include "Data/WingsFlightData.h"
 #include "Kismet/GameplayStatics.h"
+#include "Field/FieldSystemComponent.h"
+#include "Field/FieldSystemObjects.h"
+#include "Field/FieldSystemTypes.h"
 #include "ProjectWings/ProjectWings.h"
 
 AWingsPawnBase::AWingsPawnBase()
@@ -70,6 +73,10 @@ AWingsPawnBase::AWingsPawnBase()
 	MaxFuel = 100.0f;
 	CurrentFuel = 100.0f;
 
+	// 파괴 충격파를 발산하는 필드 시스템 컴포넌트
+	FieldSystemComponent = CreateDefaultSubobject<UFieldSystemComponent>(TEXT("FieldSystemComponent"));
+	FieldSystemComponent->SetupAttachment(RootComponent);
+
 	// 초기 상태 설정
 	CurrentState = EWingsPawnState::Flying;
 	bIsFreeLooking = false;
@@ -84,6 +91,12 @@ void AWingsPawnBase::BeginPlay()
 	if (EngineTrailComponent)
 	{
 		EngineTrailComponent->Activate();
+	}
+
+	// 충돌 이벤트 바인딩
+	if (MeshComponent)
+	{
+		MeshComponent->OnComponentHit.AddDynamic(this, &AWingsPawnBase::OnMeshHit);
 	}
 }
 
@@ -339,4 +352,59 @@ void AWingsPawnBase::Input_FreeLookStarted(const FInputActionValue& Value)
 void AWingsPawnBase::Input_FreeLookCompleted(const FInputActionValue& Value)
 {
 	bIsFreeLooking = false;
+}
+
+void AWingsPawnBase::OnMeshHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
+{
+	if (CurrentState != EWingsPawnState::Flying) return;
+
+	// 충돌 시 상태 전환 (추락)
+	SetPawnState(EWingsPawnState::Crashed);
+
+	// 충격파 생성
+	SpawnDestructionField(Hit.ImpactPoint, Hit.ImpactNormal);
+
+	UE_LOG(LogWings, Log, TEXT("Pawn Crashed! Impact Speed: %.1f, NormalImpulse: %s"), GetVelocity().Size(), *NormalImpulse.ToString());
+}
+
+void AWingsPawnBase::SpawnDestructionField(FVector ContactLocation, FVector HitNormal)
+{
+	if (!FieldSystemComponent || !MeshComponent) return;
+
+	float Speed = GetVelocity().Size();
+	float Mass = MeshComponent->GetMass();
+	
+	float BaseRadius = FlightData ? FlightData->DestructionFieldRadius : 500.0f;
+	float BaseStrength = FlightData ? FlightData->DestructionFieldStrength : 1000000.0f;
+	float MassRef = FlightData ? FlightData->DestructionMassReference : 100.0f;
+
+	// 1. 속도에 따른 배율 (최소 0.5배, 최대 3배)
+	float SpeedAlpha = FMath::Clamp(Speed / 5000.0f, 0.5f, 3.0f);
+	
+	// 2. 질량에 따른 배율 (기준 질량 대비 비율)
+	float MassAlpha = FMath::Max(0.1f, Mass / MassRef);
+
+	// 최종 반경 및 강도 (속도와 질량을 모두 반영)
+	float FinalRadius = BaseRadius * SpeedAlpha * FMath::Sqrt(MassAlpha); // 반경은 면적/부피 개념이므로 제곱근 적용이 자연스러움
+	float FinalStrength = BaseStrength * SpeedAlpha * MassAlpha;
+
+	// 1. Strain Field: 구조적 파괴 (Geometry Collection 파편화)
+	URadialFalloff* StrainFalloff = NewObject<URadialFalloff>(this);
+	StrainFalloff->SetRadialFalloff(FinalStrength, 0.f, FinalStrength, 0.f, FinalRadius, ContactLocation, EFieldFalloffType::Field_FallOff_None);
+	
+	FieldSystemComponent->ApplyPhysicsField(true, EFieldPhysicsType::Field_ExternalClusterStrain, nullptr, StrainFalloff);
+
+	// 2. Linear Velocity Field: 파편 밀어내기
+	URadialVector* RadialVector = NewObject<URadialVector>(this);
+	RadialVector->SetRadialVector(FinalStrength, ContactLocation); 
+
+	URadialIntMask* RadialMask = NewObject<URadialIntMask>(this);
+	RadialMask->SetRadialIntMask(FinalRadius, ContactLocation, 1, 0, Field_Set_Always);
+
+	UCullingField* CullingField = NewObject<UCullingField>(this);
+	CullingField->SetCullingField(RadialMask, RadialVector, Field_Culling_Outside);
+
+	FieldSystemComponent->ApplyPhysicsField(true, EFieldPhysicsType::Field_LinearVelocity, nullptr, CullingField);
+
+	UE_LOG(LogWings, Log, TEXT("Shockwave Spawned! Mass: %.1f, Radius: %.1f, Strength: %.1f"), Mass, FinalRadius, FinalStrength);
 }

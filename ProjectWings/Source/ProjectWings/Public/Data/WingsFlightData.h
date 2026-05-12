@@ -70,4 +70,16 @@ public:
 	/** 카메라 복귀 속도 */
 	UPROPERTY(EditAnywhere, Category = "Flight|Camera", meta = (ToolTip = "자유 시점 해제 시 카메라가 원래 위치(정후방)로 돌아오는 속도입니다."))
 	float CameraReturnSpeed = 5.0f;
+
+	/** 충격파 파괴 범위 */
+	UPROPERTY(EditAnywhere, Category = "Flight|Destruction", meta = (ToolTip = "충돌 시 발생하는 충격파의 반지름입니다."))
+	float DestructionFieldRadius = 500.0f;
+
+	/** 충격파 파괴 강도 */
+	UPROPERTY(EditAnywhere, Category = "Flight|Destruction", meta = (ToolTip = "충격파의 세기입니다. 장애물의 결합력을 끊는 데 사용됩니다."))
+	float DestructionFieldStrength = 500000.0f;
+
+	/** 파괴력 계산 시 기준이 되는 질량 */
+	UPROPERTY(EditAnywhere, Category = "Flight|Destruction", meta = (ToolTip = "파괴력(강도/반경) 계산 시 기준이 되는 질량입니다. 실제 질량이 이보다 크면 파괴력이 증폭됩니다."))
+	float DestructionMassReference = 100.0f;
 };

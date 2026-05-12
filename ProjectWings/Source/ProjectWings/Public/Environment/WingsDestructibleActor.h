@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GeometryCollection/GeometryCollectionActor.h"
+#include "Chaos/ChaosGameplayEventDispatcher.h"
 #include "WingsDestructibleActor.generated.h"
 
 class UWingsDestructionData;
@@ -30,5 +31,9 @@ protected:
 
 	/** 데이터 에셋의 수치를 실제 컴포넌트에 적용하는 함수 */
 	void ApplyDestructionData();
+
+	/** Chaos 파괴 이벤트 핸들러 */
+	UFUNCTION()
+	void OnChaosBreak(const FChaosBreakEvent& BreakEvent);
 	
 };

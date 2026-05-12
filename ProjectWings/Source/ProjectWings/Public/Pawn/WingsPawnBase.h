@@ -10,6 +10,7 @@ class UStaticMeshComponent;
 class USpringArmComponent;
 class UCameraComponent;
 class UNiagaraComponent;
+class UFieldSystemComponent;
 class UInputMappingContext;
 class UWingsInputConfigData;
 class UWingsFlightData;
@@ -145,6 +146,18 @@ protected:
 	/** 비행 시 출력되는 엔진 트레일 파티클 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Wings|Components", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UNiagaraComponent> EngineTrailComponent;
+
+	/** 파괴 충격파를 발산하는 필드 시스템 컴포넌트 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Wings|Components", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UFieldSystemComponent> FieldSystemComponent;
+
+protected:
+	/** 충돌 시 파괴 필드를 생성하는 함수 */
+	UFUNCTION()
+	void OnMeshHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
+
+	/** 충돌 지점에 물리적 충격파(Strain/Force)를 발산합니다. */
+	void SpawnDestructionField(FVector ContactLocation, FVector HitNormal);
 
 public:
 	/** 컴포넌트 게터 */

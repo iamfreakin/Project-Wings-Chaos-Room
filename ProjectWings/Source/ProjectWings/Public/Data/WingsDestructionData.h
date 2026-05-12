@@ -32,6 +32,22 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Destruction|Visual", meta = (ClampMin = "0.0"))
 	float ExplosionForceMultiplier = 1.0f;
 
+	/** 충돌 시 데미지를 발생시킬지 여부 */
+	UPROPERTY(EditAnywhere, Category = "Destruction|ChainReaction")
+	bool bEnableCollisionDamage = true;
+
+	/** 파괴 발생 시 주변으로 충격을 전파할지 여부 */
+	UPROPERTY(EditAnywhere, Category = "Destruction|ChainReaction")
+	bool bEnablePropagation = false;
+
+	/** 파괴 전파 반지름 */
+	UPROPERTY(EditAnywhere, Category = "Destruction|ChainReaction", meta = (EditCondition = "bEnablePropagation", ClampMin = "0.0"))
+	float PropagationRadius = 300.0f;
+
+	/** 전파되는 파괴 강도 (Internal Strain에 대응) */
+	UPROPERTY(EditAnywhere, Category = "Destruction|ChainReaction", meta = (EditCondition = "bEnablePropagation", ClampMin = "0.0"))
+	float PropagationStrength = 500.0f;
+
 	/** 이 물체의 재질 태그 (예: Destruction.Material.Stone) */
 	UPROPERTY(EditAnywhere, Category = "Destruction|Tags")
 	FGameplayTag DestructionTag;
