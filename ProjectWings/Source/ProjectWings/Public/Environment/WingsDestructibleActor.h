@@ -1,0 +1,34 @@
+// Fill out your copyright notice in the Description page of Project Settings.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "GeometryCollection/GeometryCollectionActor.h"
+#include "WingsDestructibleActor.generated.h"
+
+class UWingsDestructionData;
+
+/**
+ * 모든 파괴 가능한 환경 요소의 베이스 클래스입니다.
+ * GeometryCollectionActor를 상속받아 Chaos Physics 최적화 기능을 활용합니다.
+ */
+UCLASS()
+class PROJECTWINGS_API AWingsDestructibleActor : public AGeometryCollectionActor
+{
+	GENERATED_BODY()
+
+public:
+	AWingsDestructibleActor();
+
+protected:
+	virtual void BeginPlay() override;
+
+protected:
+	/** 파괴 물리 및 태그 정보를 담은 데이터 에셋 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Wings|Destruction")
+	TObjectPtr<UWingsDestructionData> DestructionData;
+
+	/** 데이터 에셋의 수치를 실제 컴포넌트에 적용하는 함수 */
+	void ApplyDestructionData();
+	
+};

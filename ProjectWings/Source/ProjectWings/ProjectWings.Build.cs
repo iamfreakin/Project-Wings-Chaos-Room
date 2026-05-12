@@ -8,7 +8,18 @@ public class ProjectWings : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 	
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "Niagara" });
+		PublicDependencyModuleNames.AddRange(new string[] { 
+			"Core", 
+			"CoreUObject", 
+			"Engine", 
+			"InputCore", 
+			"EnhancedInput", 
+			"Niagara", 
+			"ChaosSolverEngine", 
+			"GeometryCollectionEngine", 
+			"FieldSystemEngine", 
+			"GameplayTags" 
+		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });
 

@@ -63,7 +63,7 @@ AWingsPawnBase::AWingsPawnBase()
 	MaxFOV = 110.0f;
 	MinArmLength = 800.0f;
 	MaxArmLength = 1000.0f;
-	DynamicCameraSpeedThreshold = 50000.0f;
+	DynamicCameraSpeedThreshold = 5000.0f;
 	FreeLookSensitivity = 0.5f;
 
 	// 연료 관련 기본값 설정

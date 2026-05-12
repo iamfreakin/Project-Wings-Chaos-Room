@@ -49,7 +49,7 @@ public:
 
 	/** 최대 전방 추진력 */
 	UPROPERTY(EditAnywhere, Category = "Flight|Thrust", meta = (ToolTip = "엔진이 낼 수 있는 최대 추진력입니다."))
-	float MaxForwardThrust = 50000.0f;
+	float MaxForwardThrust = 5000.0f;
 
 	/** 추진력 가감 단위 */
 	UPROPERTY(EditAnywhere, Category = "Flight|Thrust", meta = (ToolTip = "추진력을 조절할 때 한 번에 변화하는 양입니다."))
