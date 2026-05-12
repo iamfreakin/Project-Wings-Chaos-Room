@@ -12,6 +12,7 @@ class UCameraComponent;
 class UNiagaraComponent;
 class UInputMappingContext;
 class UWingsInputConfigData;
+class UWingsFlightData;
 struct FInputActionValue;
 
 /**
@@ -44,9 +45,11 @@ public:
 
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
-protected:
+public:
 	/** 상태 변경 함수 */
 	void SetPawnState(EWingsPawnState NewState);
+
+protected:
 
 	/** 비행 중 입력 처리 */
 	void Input_FlightMouse(const FInputActionValue& Value);
@@ -75,45 +78,13 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Wings|Input")
 	TObjectPtr<UWingsInputConfigData> InputConfig;
 
-	/** 비행 중 상하(Pitch) 회전 감도 (마우스/키보드 공용) */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Stats|Flight")
-	float FlightPitchSensitivity;
-
-	/** 비행 중 좌우(Yaw) 회전 감도 (마우스 전용) */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Stats|Flight")
-	float FlightYawSensitivity;
-
-	/** 비행 중 기울기(Roll) 회전 감도 (키보드 전용) */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Stats|Flight")
-	float FlightRollSensitivity;
-
-	/** 진행 방향이 기체 전방을 따라가는 속도 (낮을수록 미끄러짐이 심함) */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Stats|Flight")
-	float VelocityAlignmentSpeed;
+	/** 비행 물리 데이터 에셋 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Wings|Data")
+	TObjectPtr<UWingsFlightData> FlightData;
 
 	/** 조작이 없을 때 자동으로 수평을 맞추는 기능 사용 여부 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Stats|Flight")
 	bool bEnableAutoLeveling;
-
-	/** 수평 복원 속도 (높을수록 빠르게 수평으로 돌아옴) */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Stats|Flight")
-	float AutoLevelingSpeed;
-
-	/** 기체 기울기에 따른 자동 선회(Yaw) 강도 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Stats|Flight")
-	float BankToTurnAmount;
-
-	/** A/D 입력 시 옆으로 밀어주는 물리적 힘의 크기 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Stats|Flight")
-	float FlightSideMoveForce;
-
-	/** 비행 중 도달 가능한 최대 추진력 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Stats|Flight")
-	float MaxForwardThrust;
-
-	/** 추진력 조절 시 한 번에 증감하는 수치 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Stats|Flight")
-	float ThrustStep;
 
 	/** 현재 기체가 유지하고 있는 추진력 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Wings|Stats|Flight")
@@ -151,10 +122,6 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Stats|Camera")
 	float FreeLookSensitivity;
 
-	/** 자유 시점 종료 후 카메라 복귀 속도 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Stats|Camera")
-	float CameraReturnSpeed;
-
 	/** 최대 연료량 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Stats|Fuel")
 	float MaxFuel;
@@ -162,14 +129,6 @@ protected:
 	/** 현재 남은 연료량 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Wings|Stats|Fuel")
 	float CurrentFuel;
-
-	/** 초당 기본 연료 소모량 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Stats|Fuel")
-	float FuelConsumptionRate;
-
-	/** 추진력(Thrust) 사용 시 추가 연료 소모 배율 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Stats|Fuel")
-	float ThrustFuelConsumptionMultiplier;
 
 	/** 기체 물리 및 메쉬를 담당하는 루트 컴포넌트 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Wings|Components", meta = (AllowPrivateAccess = "true"))

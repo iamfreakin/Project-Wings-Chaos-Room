@@ -102,13 +102,21 @@ void AWingsLauncher::Input_LaunchCompleted(const FInputActionValue& Value)
         FVector SpawnLocation = LaunchDirectionIndicator->GetComponentLocation();
         FRotator SpawnRotation = LaunchDirectionIndicator->GetComponentRotation();
 
-        FActorSpawnParameters SpawnParams;
-        SpawnParams.Owner = this;
-        SpawnParams.Instigator = GetInstigator();
-
-        if (AWingsPawnBase* LaunchedPawn = GetWorld()->SpawnActor<AWingsPawnBase>(ProjectileClass, SpawnLocation, SpawnRotation, SpawnParams))
+        // 1. SpawnActorDeferred를 사용하여 초기화 제어권을 가짐
+        if (AWingsPawnBase* LaunchedPawn = GetWorld()->SpawnActorDeferred<AWingsPawnBase>(
+            ProjectileClass, 
+            FTransform(SpawnRotation, SpawnLocation), 
+            this, 
+            GetInstigator(), 
+            ESpawnActorCollisionHandlingMethod::AlwaysSpawn))
         {
-            // 기체 발사 처리 (임펄스 부여)
+            // 2. 물리 및 상태 초기화 (FinishSpawning 호출 전)
+            LaunchedPawn->SetPawnState(EWingsPawnState::Flying);
+
+            // 3. 생성 완료
+            UGameplayStatics::FinishSpawningActor(LaunchedPawn, FTransform(SpawnRotation, SpawnLocation));
+
+            // 4. 기체 발사 처리 (임펄스 부여 - 생성 완료 후 수행)
             float FinalForce = MaxLaunchForce * CurrentLaunchPower;
             FVector LaunchVelocity = LaunchDirectionIndicator->GetForwardVector() * FinalForce;
             
@@ -117,11 +125,13 @@ void AWingsLauncher::Input_LaunchCompleted(const FInputActionValue& Value)
                 Mesh->AddImpulse(LaunchVelocity, NAME_None, true);
             }
 
-            // 조종권 전환
+            // 5. 조종권 전환
             if (AWingsPlayerController* PC = Cast<AWingsPlayerController>(GetController()))
             {
                 PC->TransitionToFlight(LaunchedPawn, this);
             }
+
+            UE_LOG(LogWings, Display, TEXT("Launched Pawn with Power: %.2f"), CurrentLaunchPower);
         }
     }
     

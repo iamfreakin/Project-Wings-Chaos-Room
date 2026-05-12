@@ -6,6 +6,7 @@
 #include "Launcher/WingsLauncher.h"
 #include "Pawn/WingsPawnBase.h"
 #include "EnhancedInputSubsystems.h"
+#include "ProjectWings/ProjectWings.h"
 
 AWingsPlayerController::AWingsPlayerController()
 {
@@ -38,30 +39,36 @@ void AWingsPlayerController::BeginPlay()
 
 void AWingsPlayerController::TransitionToFlight(APawn* FlightPawn, APawn* PreviousPawn)
 {
-    if (FlightPawn)
+    if (!FlightPawn)
     {
-        // 1. 기존 Pawn(Launcher)의 입력 컨텍스트 제거
-        if (PreviousPawn)
+        UE_LOG(LogWings, Error, TEXT("TransitionToFlight failed: FlightPawn is null!"));
+        return;
+    }
+
+    // 1. 기존 Pawn(Launcher)의 입력 컨텍스트 제거
+    if (PreviousPawn)
+    {
+        if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer()))
         {
-            if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer()))
+            if (AWingsLauncher* Launcher = Cast<AWingsLauncher>(PreviousPawn))
             {
-                if (AWingsLauncher* Launcher = Cast<AWingsLauncher>(PreviousPawn))
-                {
-                    Subsystem->RemoveMappingContext(Launcher->GetLauncherMappingContext());
-                }
+                Subsystem->RemoveMappingContext(Launcher->GetLauncherMappingContext());
+                UE_LOG(LogWings, Display, TEXT("Removed Launcher Mapping Context."));
             }
         }
+    }
 
-        // 2. 조종권 변경
-        Possess(FlightPawn);
+    // 2. 조종권 변경
+    Possess(FlightPawn);
+    UE_LOG(LogWings, Display, TEXT("Possessed Flight Pawn: %s"), *FlightPawn->GetName());
 
-        // 3. 새로운 Pawn(FlightPawn)의 입력 컨텍스트 추가
-        if (AWingsPawnBase* WingsPawn = Cast<AWingsPawnBase>(FlightPawn))
-        {
-             if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer()))
-             {
-                 Subsystem->AddMappingContext(WingsPawn->GetDefaultMappingContext(), 0);
-             }
-        }
+    // 3. 새로운 Pawn(FlightPawn)의 입력 컨텍스트 추가
+    if (AWingsPawnBase* WingsPawn = Cast<AWingsPawnBase>(FlightPawn))
+    {
+         if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer()))
+         {
+             Subsystem->AddMappingContext(WingsPawn->GetDefaultMappingContext(), 0);
+             UE_LOG(LogWings, Display, TEXT("Added Pawn Mapping Context."));
+         }
     }
 }

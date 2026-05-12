@@ -5,10 +5,12 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
 #include "NiagaraComponent.h"
+#include "NiagaraFunctionLibrary.h"
 #include "Core/WingsGameState.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "Data/WingsInputConfigData.h"
+#include "Data/WingsFlightData.h"
 #include "Kismet/GameplayStatics.h"
 #include "ProjectWings/ProjectWings.h"
 
@@ -50,20 +52,11 @@ AWingsPawnBase::AWingsPawnBase()
 	EngineTrailComponent->SetupAttachment(RootComponent);
 	EngineTrailComponent->bAutoActivate = false;
 
-	// 비행 관련 기본값 설정
-	FlightPitchSensitivity = 0.05f;
-	FlightYawSensitivity = 0.03f;
-	FlightRollSensitivity = 0.5f;
-	VelocityAlignmentSpeed = 2.0f;
+	// 기본 상태 설정
 	bEnableAutoLeveling = true;
-	AutoLevelingSpeed = 1.5f;
-	BankToTurnAmount = 0.1f;
-	FlightSideMoveForce = 1500.0f;
-	MaxForwardThrust = 50000.0f;
-	ThrustStep = 100.0f;
 	CurrentThrust = 0.0f;
 
-	// 카메라 동적 효과 기본값
+	// 카메라 동적 효과 기본값 (Data Asset 미설정 시 대비)
 	CameraLagSpeed = 10.0f;
 	CameraRotationLagSpeed = 8.0f;
 	MinFOV = 90.0f;
@@ -72,13 +65,10 @@ AWingsPawnBase::AWingsPawnBase()
 	MaxArmLength = 1000.0f;
 	DynamicCameraSpeedThreshold = 50000.0f;
 	FreeLookSensitivity = 0.5f;
-	CameraReturnSpeed = 5.0f;
 
 	// 연료 관련 기본값 설정
 	MaxFuel = 100.0f;
 	CurrentFuel = 100.0f;
-	FuelConsumptionRate = 1.0f;
-	ThrustFuelConsumptionMultiplier = 2.0f;
 
 	// 초기 상태 설정
 	CurrentState = EWingsPawnState::Flying;
@@ -91,7 +81,10 @@ void AWingsPawnBase::BeginPlay()
 
 	CurrentFuel = MaxFuel;
 
-	// IMC 추가 로직은 이제 AWingsPlayerController::TransitionToFlight에서 관리합니다.
+	if (EngineTrailComponent)
+	{
+		EngineTrailComponent->Activate();
+	}
 }
 
 void AWingsPawnBase::Tick(float DeltaTime)
@@ -103,43 +96,76 @@ void AWingsPawnBase::Tick(float DeltaTime)
 		// 0. 연료 소모 및 고갈 처리
 		if (CurrentFuel > 0.f)
 		{
-			// 기본 소모 + 추진력에 따른 추가 소모
-			float ThrustRatio = (MaxForwardThrust > 0.f) ? (CurrentThrust / MaxForwardThrust) : 0.f;
-			float ActualConsumption = FuelConsumptionRate + (ThrustRatio * FuelConsumptionRate * ThrustFuelConsumptionMultiplier);
+			float FuelRate = FlightData ? FlightData->FuelConsumptionRate : 1.0f;
+			float ThrustMult = FlightData ? FlightData->ThrustFuelMultiplier : 2.0f;
+			float MaxThrust = FlightData ? FlightData->MaxForwardThrust : 50000.0f;
+
+			float ThrustRatio = (MaxThrust > 0.f) ? (CurrentThrust / MaxThrust) : 0.f;
+			float ActualConsumption = FuelRate + (ThrustRatio * FuelRate * ThrustMult);
 			
 			CurrentFuel = FMath::Max(0.f, CurrentFuel - (ActualConsumption * DeltaTime));
+
+			// Niagara 파라미터 업데이트 (연료량 연동)
+			if (EngineTrailComponent)
+			{
+				EngineTrailComponent->SetFloatParameter(TEXT("FuelPercentage"), GetFuelPercentage());
+			}
 
 			if (GEngine)
 			{
 				GEngine->AddOnScreenDebugMessage(2, DeltaTime, FColor::Green, 
 					FString::Printf(TEXT("Fuel: %.1f%%"), GetFuelPercentage() * 100.f));
 			}
+
+			// 일반 비행 시 안정성 유지 (공기 저항)
+			MeshComponent->SetLinearDamping(0.5f);
 		}
 		else
 		{
-			// 연료 고갈 시 패널티
-			CurrentThrust = 0.f;
-			MeshComponent->SetLinearDamping(2.0f); // 공기 저항 급증 (추락 유도)
+			// 연료 고갈 시: 추진력 차단 및 엔진 트레일 비활성화
+			if (CurrentThrust > 0.f)
+			{
+				CurrentThrust = 0.f;
+				if (EngineTrailComponent) EngineTrailComponent->Deactivate();
+				UE_LOG(LogWings, Warning, TEXT("OUT OF FUEL! Momentum preserved, gravity taking over."));
+			}
 			
 			if (GEngine)
 			{
 				GEngine->AddOnScreenDebugMessage(2, DeltaTime, FColor::Red, TEXT("OUT OF FUEL!"));
 			}
+
+			// 활공을 위해 저항 극최소화 (관성 보존 극대화)
+			MeshComponent->SetLinearDamping(0.01f);
 		}
 
-		// 1. Velocity Alignment: 진행 방향 보정
+		// 1. Velocity Alignment: 진행 방향 보정 (엔진 유무에 따라 감도 조절)
 		FVector CurrentVelocity = MeshComponent->GetPhysicsLinearVelocity();
 		float Speed = CurrentVelocity.Size();
+		float AlignSpeed = FlightData ? FlightData->VelocityAlignmentSpeed : 2.0f;
+		
+		// 연료 고갈 시에는 보정력을 약화시켜 활공 느낌 강화
+		if (CurrentFuel <= 0.f) AlignSpeed *= 0.5f;
+
 		if (Speed > 100.f)
 		{
+			// 현재 속도 벡터를 기체 정면 방향으로 부드럽게 회전시킴
 			FVector TargetVelocity = GetActorForwardVector() * Speed;
-			FVector NewVelocity = FMath::VInterpTo(CurrentVelocity, TargetVelocity, DeltaTime, VelocityAlignmentSpeed);
+			FVector NewVelocity = FMath::VInterpTo(CurrentVelocity, TargetVelocity, DeltaTime, AlignSpeed);
+			
+			// 중요: 벡터의 방향만 취하고 원래의 속력(Magnitude)을 유지하여 에너지 손실 방지
+			if (!NewVelocity.IsNearlyZero())
+			{
+				NewVelocity = NewVelocity.GetSafeNormal() * Speed;
+			}
+			
 			MeshComponent->SetPhysicsLinearVelocity(NewVelocity);
 		}
 
 		// 2. Auto-Leveling (PD 제어기)
 		if (bEnableAutoLeveling)
 		{
+			float LevelingSpeed = FlightData ? FlightData->AutoLevelingSpeed : 1.5f;
 			FQuat CurrentQuat = GetActorQuat();
 			FVector RightVector = CurrentQuat.GetRightVector();
 			float RollError = FVector::DotProduct(RightVector, FVector::UpVector);
@@ -147,7 +173,7 @@ void AWingsPawnBase::Tick(float DeltaTime)
 			FVector AngVel = MeshComponent->GetPhysicsAngularVelocityInRadians();
 			float RollAngVel = FVector::DotProduct(AngVel, GetActorForwardVector());
 
-			float P_Gain = AutoLevelingSpeed * 40.0f; 
+			float P_Gain = LevelingSpeed * 40.0f; 
 			float D_Gain = FMath::Sqrt(P_Gain) * 2.0f;
 
 			float LevelingTorque = (-RollError * P_Gain) - (RollAngVel * D_Gain);
@@ -155,37 +181,51 @@ void AWingsPawnBase::Tick(float DeltaTime)
 		}
 
 		// 3. Bank-to-Turn
+		float BTTAmount = FlightData ? FlightData->BankToTurnAmount : 0.1f;
 		FVector Right = GetActorRightVector();
 		float RollLean = FVector::DotProduct(Right, FVector::UpVector);
 		if (FMath::Abs(RollLean) > 0.05f)
 		{
-			float YawTorque = -RollLean * BankToTurnAmount * 10.0f;
+			float YawTorque = -RollLean * BTTAmount * 10.0f;
 			MeshComponent->AddTorqueInRadians(FVector::UpVector * YawTorque, NAME_None, true);
 		}
 
-		// 4. Constant Thrust
+		// 4. Constant Thrust & Fake Lift
 		if (CurrentThrust > 0.f)
 		{
 			MeshComponent->AddForce(GetActorForwardVector() * CurrentThrust, NAME_None, true);
 		}
 
+		// Fake Lift: 속도에 비례하여 중력의 일부 상쇄 (부유감 개선)
+		float LiftMultiplier = FlightData ? FlightData->LiftForceMultiplier : 0.1f;
+		
+		// 연료 고갈 시에는 양력을 90% 제거하여 묵직한 다이빙 유도
+		if (CurrentFuel <= 0.f) LiftMultiplier *= 0.1f;
+
+		if (Speed > 500.f)
+		{
+			FVector LiftForce = FVector::UpVector * Speed * LiftMultiplier * MeshComponent->GetMass();
+			MeshComponent->AddForce(LiftForce, NAME_None, false);
+		}
+
 		// 5. Dynamic Camera (FOV & Distance)
-		float CurrentSpeed = MeshComponent->GetPhysicsLinearVelocity().Size();
-		float SpeedAlpha = FMath::Clamp(CurrentSpeed / DynamicCameraSpeedThreshold, 0.f, 1.f);
+		float SpeedAlpha = FMath::Clamp(Speed / DynamicCameraSpeedThreshold, 0.f, 1.f);
+		float InterpSpeed = FlightData ? FlightData->DynamicCameraInterpSpeed : 2.0f;
 
 		float TargetFOV = FMath::Lerp(MinFOV, MaxFOV, SpeedAlpha);
 		float TargetArmLength = FMath::Lerp(MinArmLength, MaxArmLength, SpeedAlpha);
 
-		CameraComponent->SetFieldOfView(FMath::FInterpTo(CameraComponent->FieldOfView, TargetFOV, DeltaTime, 2.0f));
-		SpringArmComponent->TargetArmLength = FMath::FInterpTo(SpringArmComponent->TargetArmLength, TargetArmLength, DeltaTime, 2.0f);
+		CameraComponent->SetFieldOfView(FMath::FInterpTo(CameraComponent->FieldOfView, TargetFOV, DeltaTime, InterpSpeed));
+		SpringArmComponent->TargetArmLength = FMath::FInterpTo(SpringArmComponent->TargetArmLength, TargetArmLength, DeltaTime, InterpSpeed);
 
-		// 6. Free Look Smooth Return
+		// 6. Free Look Smooth Return (Quaternion Interp)
 		if (!bIsFreeLooking)
 		{
 			FRotator CurrentRelativeRot = SpringArmComponent->GetRelativeRotation();
 			if (!CurrentRelativeRot.IsNearlyZero())
 			{
-				FRotator NewRelativeRot = FMath::RInterpTo(CurrentRelativeRot, FRotator::ZeroRotator, DeltaTime, CameraReturnSpeed);
+				float ReturnSpeed = FlightData ? FlightData->CameraReturnSpeed : 5.0f;
+				FRotator NewRelativeRot = FMath::RInterpTo(CurrentRelativeRot, FRotator::ZeroRotator, DeltaTime, ReturnSpeed);
 				SpringArmComponent->SetRelativeRotation(NewRelativeRot);
 			}
 		}
@@ -200,13 +240,11 @@ void AWingsPawnBase::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 	{
 		if (InputConfig)
 		{
-			// 오직 비행 조종 입력만 바인딩
 			EnhancedInputComponent->BindAction(InputConfig->IA_Aim, ETriggerEvent::Triggered, this, &AWingsPawnBase::Input_FlightMouse);
 			EnhancedInputComponent->BindAction(InputConfig->IA_Pitch, ETriggerEvent::Triggered, this, &AWingsPawnBase::Input_PitchKeyboard);
 			EnhancedInputComponent->BindAction(InputConfig->IA_Roll, ETriggerEvent::Triggered, this, &AWingsPawnBase::Input_Roll);
 			EnhancedInputComponent->BindAction(InputConfig->IA_Thrust, ETriggerEvent::Triggered, this, &AWingsPawnBase::Input_Thrust);
 
-			// 자유 시점 입력 바인딩
 			EnhancedInputComponent->BindAction(InputConfig->IA_FreeLook, ETriggerEvent::Started, this, &AWingsPawnBase::Input_FreeLookStarted);
 			EnhancedInputComponent->BindAction(InputConfig->IA_FreeLook, ETriggerEvent::Completed, this, &AWingsPawnBase::Input_FreeLookCompleted);
 		}
@@ -221,11 +259,11 @@ void AWingsPawnBase::SetPawnState(EWingsPawnState NewState)
 	{
 	case EWingsPawnState::Flying:
 		MeshComponent->SetSimulatePhysics(true);
-		EngineTrailComponent->Activate();
+		if (EngineTrailComponent) EngineTrailComponent->Activate();
 		break;
 
 	case EWingsPawnState::Crashed:
-		// 충돌 처리 (추후 구현)
+		if (EngineTrailComponent) EngineTrailComponent->Deactivate();
 		break;
 	}
 }
@@ -238,7 +276,6 @@ void AWingsPawnBase::Input_FlightMouse(const FInputActionValue& Value)
 
 	if (bIsFreeLooking)
 	{
-		// 자유 시점 중: 스프링 암의 상대 회전값 변경
 		FRotator NewRotation = SpringArmComponent->GetRelativeRotation();
 		NewRotation.Pitch = FMath::Clamp(NewRotation.Pitch + (LookAxisVector.Y * FreeLookSensitivity), -80.f, 80.f);
 		NewRotation.Yaw += (LookAxisVector.X * FreeLookSensitivity);
@@ -246,9 +283,12 @@ void AWingsPawnBase::Input_FlightMouse(const FInputActionValue& Value)
 	}
 	else
 	{
-		// 일반 비행 중: 기체에 토크 부여
-		float PitchTorque = LookAxisVector.Y * FlightPitchSensitivity * 25.f;
-		float YawTorque = LookAxisVector.X * FlightYawSensitivity * 15.f;
+		// 코드 내 감도 곱셈 제거 (IMC Modifier 활용 권장)
+		float PitchSens = FlightData ? FlightData->PitchSensitivity : 1.0f;
+		float YawSens = FlightData ? FlightData->YawSensitivity : 1.0f;
+
+		float PitchTorque = LookAxisVector.Y * PitchSens * 25.f;
+		float YawTorque = LookAxisVector.X * YawSens * 15.f;
 
 		MeshComponent->AddTorqueInRadians(GetActorRightVector() * PitchTorque, NAME_None, true);
 		MeshComponent->AddTorqueInRadians(GetActorUpVector() * YawTorque, NAME_None, true);
@@ -260,7 +300,8 @@ void AWingsPawnBase::Input_PitchKeyboard(const FInputActionValue& Value)
 	if (CurrentState != EWingsPawnState::Flying) return;
 
 	float PitchValue = Value.Get<float>();
-	float PitchTorque = PitchValue * FlightPitchSensitivity * 30.f;
+	float PitchSens = FlightData ? FlightData->PitchSensitivity : 1.0f;
+	float PitchTorque = PitchValue * PitchSens * 30.f;
 	MeshComponent->AddTorqueInRadians(GetActorRightVector() * PitchTorque, NAME_None, true);
 }
 
@@ -269,10 +310,13 @@ void AWingsPawnBase::Input_Roll(const FInputActionValue& Value)
 	if (CurrentState != EWingsPawnState::Flying) return;
 
 	float RollValue = Value.Get<float>();
-	float RollTorque = RollValue * FlightRollSensitivity * 30.f;
+	float RollSens = FlightData ? FlightData->RollSensitivity : 1.0f;
+	float SideForce = FlightData ? FlightData->FlightSideMoveForce : 1500.0f;
+
+	float RollTorque = RollValue * RollSens * 30.f;
 	MeshComponent->AddTorqueInRadians(GetActorForwardVector() * RollTorque, NAME_None, true);
 
-	FVector SideMoveForce = GetActorRightVector() * RollValue * FlightSideMoveForce * 0.01f;
+	FVector SideMoveForce = GetActorRightVector() * RollValue * SideForce * 0.01f;
 	MeshComponent->AddForce(SideMoveForce, NAME_None, true);
 }
 
@@ -281,7 +325,10 @@ void AWingsPawnBase::Input_Thrust(const FInputActionValue& Value)
 	if (CurrentState != EWingsPawnState::Flying || CurrentFuel <= 0.f) return;
 
 	float ThrustInput = Value.Get<float>();
-	CurrentThrust = FMath::Clamp(CurrentThrust + (ThrustInput * ThrustStep), 0.f, MaxForwardThrust);
+	float MaxThrust = FlightData ? FlightData->MaxForwardThrust : 50000.0f;
+	float Step = FlightData ? FlightData->ThrustStep : 100.0f;
+
+	CurrentThrust = FMath::Clamp(CurrentThrust + (ThrustInput * Step), 0.f, MaxThrust);
 }
 
 void AWingsPawnBase::Input_FreeLookStarted(const FInputActionValue& Value)

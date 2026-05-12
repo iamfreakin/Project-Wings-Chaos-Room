@@ -121,6 +121,16 @@
 - Unreal Engine의 `UEnhancedInputLocalPlayerSubsystem`을 활용한 런타임 IMC 교체 시스템 구축.
 - `Possess`와 IMC 전환을 원자적으로 처리하여 사용자 경험(UX) 끊김 방지.
 
+## [2026-05-12] 컴파일 오류 해결 및 코드 정제
+
+### Fixed
+- **`WingsPawnBase.cpp` 중복 제거**: 파일 후반부에 잘못 포함된 대규모 중복 함수 정의 블록을 삭제하여 `C2084`(이미 본문이 있음) 및 `C2065`(미선언 식별자) 오류 해결.
+- **`LogWings` 식별자 오류**: `WingsPlayerController.cpp`와 `WingsPawnBase.cpp`에서 `ProjectWings.h` 인클루드 경로를 프로젝트 구조에 맞게 수정하여 로그 카테고리 인식 문제 해결.
+- **접근 권한 오류**: `WingsLauncher.cpp`에서 발생하던 `SetPawnState` 접근 권한 문제는 `WingsPawnBase.cpp`의 중복 정의가 제거되면서 정상적인 헤더 정보를 참조하게 되어 해결됨.
+
+### Improved
+- **빌드 안정성**: 전체 프로젝트 리빌드를 통해 모든 모듈 간 참조 및 컴파일 무결성 확인.
+
 ## [2026-05-11] 연료 및 감속 시스템 구현 (Day 7)
 
 ### Added

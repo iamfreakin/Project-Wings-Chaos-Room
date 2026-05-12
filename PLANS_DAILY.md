@@ -247,6 +247,41 @@
 - 우클릭을 떼면 카메라가 기체 정후방으로 자연스럽게 복귀.
 
 ### 6. 검증 방법
-- PIE 실행 후 가속/감속 및 급선회 시 카메라 연출 확인.
-- 우클릭 조작을 통한 자유 시점 및 복귀 트리거 테스트.
+---
+
+## [1주차 9일차] 1주차 통합 디버깅 및 데이터 기반 리파인 (완료)
+
+### 1. 목표
+- 1주차 핵심 기능의 통합 안정성 확보 및 **Data-Driven Architecture** 도입.
+- `SpawnActorDeferred`를 통한 안정적인 물리 초기화 및 발사 시퀀스 개선.
+- 연료 고갈 시 인위적인 감속 제거 및 관성 유지/중력 가속 기반의 자연스러운 추락 구현.
+- **Enhanced Input Modifiers** 활용을 위한 감도 로직 분리 및 **Niagara User Parameters** 연동.
+
+### 2. 영향 범위
+- `ProjectWings/Source/ProjectWings/Public/Data/WingsFlightData.h` (신규)
+- `ProjectWings/Source/ProjectWings/Public/Pawn/WingsPawnBase.h/cpp`
+- `ProjectWings/Source/ProjectWings/Private/Launcher/WingsLauncher.cpp`
+- `ProjectWings/Source/ProjectWings/Private/Core/WingsPlayerController.cpp`
+
+### 3. 상세 단계 (C++ Implementation)
+1. **데이터 에셋화**: `UWingsFlightData`를 생성하여 감도, 양력, 연료 효율 등 물리 파라미터를 중앙 관리.
+2. **발사 로직 고도화**: `SpawnActorDeferred`를 사용해 기체 스폰 후 상태를 먼저 설정하고 `FinishSpawning` 후에 임펄스를 주어 물리적 튐 현상 방지.
+3. **자연스러운 추락 구현**: 연료 0 시 `LinearDamping` 패널티를 삭제하고, 추진력만 차단하여 기존 속도가 유지되게 함. 하강 시 중력에 의해 자연스럽게 가속됨.
+4. **가짜 양력(Fake Lift)**: 속도에 비례해 중력을 상쇄하는 힘을 추가하여 고속 비행 시의 부유감 개선.
+5. **연출 연동**: Niagara에 `FuelPercentage` 파라미터를 전달하여 연료량에 따른 트레일 변화 기초 마련.
+
+### 4. Editor Workflow (중요)
+1. **Data Asset 생성**: `Content/Data` 폴더에 `WingsFlightData` 기반의 `DA_WingsFlight_Default` 생성.
+2. **BP_WingsPawn 업데이트**: `Flight Data` 슬롯에 위 에셋을 할당하고, 감도/물리 수치를 튜닝.
+3. **IMC 수정 (권장)**: `IMC_WingsPlayer`에서 각 Input Action에 `Scalar` 모디파이어를 추가하여 정밀한 감도 조절 수행.
+4. **Niagara 수정**: 엔진 트레일 시스템에서 `FuelPercentage` User Parameter를 생성하고 연출(굵기 등)에 연동.
+
+### 5. Success Criteria
+- 발사 직후 기체의 초기 거동이 물리적으로 안정적임.
+- 연료 고갈 후에도 기체가 즉시 멈추지 않고 곡선을 그리며 관성 비행을 유지하다 추락함.
+- 모든 비행 관련 수치를 데이터 에셋에서 실시간으로 변경하며 테스트 가능함.
+
+### 6. 검증 방법
+- PIE 실행 후 고고도 발사 -> 연료 고갈 대기 -> 다이빙 및 관성 낙하 거동 확인.
+- 데이터 에셋 수치 변경에 따른 비행 특성 변화 수동 확인.
 
