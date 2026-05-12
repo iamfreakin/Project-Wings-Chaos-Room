@@ -323,3 +323,33 @@
 ### 6. 검증 방법
 - 질량 100kg vs 1000kg 비교 테스트 수행.
 - 밀집된 구조물에 충돌하여 연쇄 파괴 거동 수동 확인.
+
+---
+
+## [2주차 12일차] UI 시스템 구현 및 상태 기반 가시성 제어 (완료)
+
+### 1. 목표
+- 인게임 HUD UI 프레임워크(`WingsUserWidget`) 구축.
+- 게임 상태(`Ready`, `Flying`)에 따른 동적 UI 가시성 전환.
+- 속도 및 연료 잔량 실시간 데이터 바인딩 및 컬러 피드백 구현.
+
+### 2. 영향 범위
+- `ProjectWings/Source/ProjectWings/Public/UI/WingsUserWidget.h/cpp`
+- `Content/UI/WBP_MainHUD.uasset`
+
+### 3. 상세 단계 (C++ Implementation)
+1. `WingsUserWidget` 기반 클래스 생성 및 UI 요소(`BindWidget`) 바인딩.
+2. `GetFlightUIVisibility` 및 `GetLauncherUIVisibility` 게터 함수로 게임 상태에 따른 UI 제어.
+3. 속도/연료 데이터 바인딩 로직 구현.
+
+### 4. Editor Workflow (중요)
+1. `WBP_MainHUD` 블루프린트 위젯 생성 및 클래스 상속 변경(`WingsUserWidget`).
+2. 바인딩 위젯 설정 (`BindWidget`과 위젯 이름 일치화).
+
+### 5. Success Criteria
+- 게임 시작 시 발사대 조준 상태 UI가 출력됨.
+- 비행 중 기체 속도와 연료 바가 실시간으로 갱신됨.
+- 연료 부족 시 색상이 경고 색상(Red)으로 변경됨.
+
+### 6. 검증 방법
+- PIE 실행 후 상태 변화에 따른 UI 가시성 및 데이터 업데이트 확인.

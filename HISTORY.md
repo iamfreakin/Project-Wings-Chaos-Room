@@ -160,3 +160,15 @@
 ### Improved
 - **물리 분석**: `AWingsPawnBase::OnMeshHit` 시 `NormalImpulse` 값을 로그로 출력하여 파괴 위력 튜닝 지원.
 - **코드 무결성**: `WingsPawnBase.cpp` 내 중복 정의된 함수 블록을 제거하여 컴파일 안정성 확보.
+
+## [2026-05-12] UI 시스템 구현 및 상태 가시성 최적화
+
+### Added
+- **UI 프레임워크 기반 마련**: `WingsUserWidget`을 활용한 인게임 HUD 시스템 구현.
+- **상태 기반 UI 가시성 제어**: `GetFlightUIVisibility`, `GetLauncherUIVisibility`를 통해 게임 상태에 따른 UI 동적 전환 로직 추가.
+- **실시간 데이터 바인딩**:
+    - 속도(km/h) 표시 및 연료 잔량(0-1 비율)에 따른 컬러 피드백(Green/Yellow/Red).
+- **안전성 로직**: 발사 충돌 시나리오 대비 안전성 확보 로직 추가.
+
+### Improved
+- **레이아웃 최적화**: 사용되지 않는 UI 요소에 대한 `Collapsed` 처리를 통해 렌더링 성능 최적화 및 UX 개선.
