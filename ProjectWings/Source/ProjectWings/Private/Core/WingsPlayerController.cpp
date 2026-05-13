@@ -13,9 +13,9 @@
 
 AWingsPlayerController::AWingsPlayerController()
 {
-	bShowMouseCursor = true;
-	bEnableClickEvents = true;
-	bEnableMouseOverEvents = true;
+    bShowMouseCursor = true;
+    bEnableClickEvents = true;
+    bEnableMouseOverEvents = true;
 }
 
 void AWingsPlayerController::BeginPlay()
@@ -93,11 +93,11 @@ void AWingsPlayerController::TransitionToFlight(APawn* FlightPawn, APawn* Previo
     // 3. 새로운 Pawn(FlightPawn)의 입력 컨텍스트 추가
     if (AWingsPawnBase* WingsPawn = Cast<AWingsPawnBase>(FlightPawn))
     {
-         if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer()))
-         {
-             Subsystem->AddMappingContext(WingsPawn->GetDefaultMappingContext(), 0);
-             UE_LOG(LogWings, Display, TEXT("Added Pawn Mapping Context."));
-         }
+        if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer()))
+        {
+            Subsystem->AddMappingContext(WingsPawn->GetDefaultMappingContext(), 0);
+            UE_LOG(LogWings, Display, TEXT("Added Pawn Mapping Context."));
+        }
     }
 }
 

@@ -70,4 +70,31 @@ public:
 	/** 재시도 안내 문구의 가시성을 반환합니다. (Visible/Collapsed) */
 	UFUNCTION(BlueprintPure, Category = "Wings|UI")
 	ESlateVisibility GetRetryUIVisibility() const;
+
+	/** 목표물 관련 정보 */
+	UFUNCTION(BlueprintPure, Category = "Wings|UI")
+	int32 GetRemainingTargets() const;
+
+	UFUNCTION(BlueprintPure, Category = "Wings|UI")
+	int32 GetTotalTargets() const;
+
+	UFUNCTION(BlueprintPure, Category = "Wings|UI")
+	FText GetTargetProgressText() const;
+
+	/** 승리/패배 UI 가시성 */
+	UFUNCTION(BlueprintPure, Category = "Wings|UI")
+	ESlateVisibility GetWinUIVisibility() const;
+
+	UFUNCTION(BlueprintPure, Category = "Wings|UI")
+	ESlateVisibility GetLossUIVisibility() const;
+
+	/** 결과 화면 액션 함수들 */
+	UFUNCTION(BlueprintCallable, Category = "Wings|UI")
+	void RestartLevel();
+
+	UFUNCTION(BlueprintCallable, Category = "Wings|UI")
+	void QuitGame();
+
+	UFUNCTION(BlueprintCallable, Category = "Wings|UI")
+	void LoadNextLevel(FName LevelName);
 	};

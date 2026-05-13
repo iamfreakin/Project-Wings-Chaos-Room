@@ -29,11 +29,22 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Wings|Destruction")
 	TObjectPtr<UWingsDestructionData> DestructionData;
 
+	/** 이 블록을 파괴하는 것이 스테이지 목표인지 여부 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Wings|Destruction")
+	bool bIsTarget = false;
+
+	/** 이미 파괴되어 목표 카운트에서 제외되었는지 여부 */
+	bool bHasBeenCounted = false;
+
 	/** 데이터 에셋의 수치를 실제 컴포넌트에 적용하는 함수 */
 	void ApplyDestructionData();
 
 	/** Chaos 파괴 이벤트 핸들러 */
 	UFUNCTION()
 	void OnChaosBreak(const FChaosBreakEvent& BreakEvent);
+
+public:
+    UFUNCTION(BlueprintPure, Category = "Wings|Destruction")
+    bool IsTarget() const { return bIsTarget; }
 	
 };
