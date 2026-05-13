@@ -432,7 +432,34 @@
 
 ---
 
-## [2주차 16일차] 전체 스테이지(1~4) 밸런싱 및 폴리싱 (완료)
+## [2주차 17일차] [Stage 1] 부유 성채 레벨 디자인 및 전환 시스템 (예정)
+
+### 1. 목표
+- "하늘 위의 부유 요새" 컨셉의 첫 번째 공식 스테이지(`Stage_01`) 제작.
+- Geometry Collection을 활용한 파괴 가능한 성문(Stone 속성) 구조물 배치.
+- Stage 1 클리어 시 자동으로 다음 레벨로 넘어가는 전환 로직 구현.
+
+### 2. 영향 범위
+- `Maps/Stage_01.umap` (신규)
+- `ProjectWings/Source/ProjectWings/Private/Core/WingsGameMode.cpp` (레벨 전환 로직 추가)
+- `Content/Blueprints/BP_Destructible_Base` (상속 구조 정리)
+
+### 3. 상세 단계
+1. **레벨 전환 로직**: `AWingsGameMode`에서 승리 시 호출될 `LoadNextLevel` 기능을 강화하여, 데이터 에셋이나 `World Settings`에 지정된 다음 맵 이름을 불러오도록 수정.
+2. **에셋 파쇄(Fracture)**: 사용할 성벽 에셋을 Geometry Collection으로 변환하고 `AWingsDestructibleActor`를 부모 클래스로 지정.
+3. **맵 배치**: `BP_WingsLauncher`와 타겟 블록들을 배치하여 튜토리얼 성격의 첫 스테이지 구성.
+
+### 4. Editor Workflow
+1. **신규 레벨**: `Maps` 폴더에 `Stage_01` 레벨 생성.
+2. **파쇄 모드**: 성벽 스태틱 메쉬를 Fracture 모드에서 파쇄 후 GC(Geometry Collection) 에셋 생성.
+3. **상성 설정**: 생성된 GC 액터의 `Attribute`를 `Stone`으로 설정.
+
+### 5. Success Criteria
+- `Stage_01`에서 타겟 블록을 모두 파괴했을 때, 승리 화면이 뜨고 '다음 단계' 버튼이 작동함.
+- 부유 성채 느낌의 배경(구름, 부유 섬)이 적절히 배치됨.
+
+### 6. 검증 방법
+- 실제 플레이를 통해 Stage 1 클리어 후 다음 레벨 로드 여부 확인.
 
 ### 1. 목표
 - Stage 1~4의 물리 수치 및 난이도 밸런싱.
