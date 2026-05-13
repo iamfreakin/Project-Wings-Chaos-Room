@@ -59,7 +59,15 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Wings|UI")
 	ESlateVisibility GetLauncherUIVisibility() const;
 
-	/** 현재 스테이지의 남은 기체 수를 반환합니다. */
+	/** "남은 기체: 3" 형식의 포맷팅된 텍스트를 반환합니다. */
 	UFUNCTION(BlueprintPure, Category = "Wings|UI")
-	int32 GetRemainingSpawns() const;
+	FText GetRemainingSpawnsText() const;
+
+	/** 현재 재시도 대기 중인지 여부를 반환합니다. (안내 문구 표시용) */
+	UFUNCTION(BlueprintPure, Category = "Wings|UI")
+	bool IsWaitingForRetry() const;
+
+	/** 재시도 안내 문구의 가시성을 반환합니다. (Visible/Collapsed) */
+	UFUNCTION(BlueprintPure, Category = "Wings|UI")
+	ESlateVisibility GetRetryUIVisibility() const;
 	};

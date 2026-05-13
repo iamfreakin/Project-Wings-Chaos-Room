@@ -20,6 +20,7 @@ AWingsGameMode::AWingsGameMode()
 void AWingsGameMode::OnAircraftLaunched()
 {
     CurrentSpawnCount++;
+    bIsWaitingForRetry = false;
     UE_LOG(LogWings, Display, TEXT("Aircraft Launched! Remaining Spawns: %d"), GetRemainingSpawns());
 }
 
@@ -29,21 +30,13 @@ void AWingsGameMode::OnAircraftCrashed()
 
     if (GetRemainingSpawns() > 0)
     {
-        UE_LOG(LogWings, Display, TEXT("Retries left. Returning to Launcher in 3 seconds..."));
-        
-        // 3초 후 발사대로 복귀 (사망 카메라 감상 시간 제공)
-        FTimerHandle RetryTimerHandle;
-        GetWorldTimerManager().SetTimer(RetryTimerHandle, [this]()
-        {
-            if (AWingsPlayerController* PC = Cast<AWingsPlayerController>(GetWorld()->GetFirstPlayerController()))
-            {
-                PC->ReturnToLauncher();
-            }
-        }, 3.0f, false);
+        UE_LOG(LogWings, Display, TEXT("Retries left. Waiting for R key input..."));
+        bIsWaitingForRetry = true;
     }
     else
     {
         UE_LOG(LogWings, Warning, TEXT("NO MORE RETRIES! Game Over."));
-        // 
+        bIsWaitingForRetry = false;
+        // Game Over logic (e.g., Show Game Over UI) could go here
     }
 }

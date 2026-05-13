@@ -32,8 +32,15 @@ protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Wings|Stage")
     int32 CurrentSpawnCount = 0;
 
+    /** 현재 재시도 입력을 기다리는 중인지 여부 */
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Wings|Stage")
+    bool bIsWaitingForRetry = false;
+
 public:
     /** 게터 */
     UFUNCTION(BlueprintPure, Category = "Wings|Stage")
     int32 GetRemainingSpawns() const { return FMath::Max(0, TotalSpawnsAllowed - CurrentSpawnCount); }
+
+    UFUNCTION(BlueprintPure, Category = "Wings|Stage")
+    bool IsWaitingForRetry() const { return bIsWaitingForRetry; }
 };

@@ -6,6 +6,9 @@
 #include "Launcher/WingsLauncher.h"
 #include "Pawn/WingsPawnBase.h"
 #include "EnhancedInputSubsystems.h"
+#include "EnhancedInputComponent.h"
+#include "Data/WingsInputConfigData.h"
+#include "Core/WingsGameMode.h"
 #include "ProjectWings/ProjectWings.h"
 
 AWingsPlayerController::AWingsPlayerController()
@@ -37,9 +40,33 @@ void AWingsPlayerController::BeginPlay()
     }
 }
 
+void AWingsPlayerController::SetupInputComponent()
+{
+    Super::SetupInputComponent();
+
+    if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(InputComponent))
+    {
+        if (InputConfig && InputConfig->IA_Retry)
+        {
+            EnhancedInputComponent->BindAction(InputConfig->IA_Retry, ETriggerEvent::Started, this, &AWingsPlayerController::Input_Retry);
+        }
+    }
+}
+
+void AWingsPlayerController::Input_Retry()
+{
+    if (AWingsGameMode* GM = GetWorld()->GetAuthGameMode<AWingsGameMode>())
+    {
+        if (GM->IsWaitingForRetry())
+        {
+            UE_LOG(LogWings, Display, TEXT("Retry Input Received."));
+            ReturnToLauncher();
+        }
+    }
+}
+
 void AWingsPlayerController::TransitionToFlight(APawn* FlightPawn, APawn* PreviousPawn)
 {
-    // ... (기존 구현 생략 없이 전체 유지)
     if (!FlightPawn)
     {
         UE_LOG(LogWings, Error, TEXT("TransitionToFlight failed: FlightPawn is null!"));

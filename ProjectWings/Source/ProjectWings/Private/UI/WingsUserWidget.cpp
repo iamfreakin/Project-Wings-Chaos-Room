@@ -83,11 +83,30 @@ ESlateVisibility UWingsUserWidget::GetLauncherUIVisibility() const
     return Cast<AWingsLauncher>(GetOwningPlayerPawn()) ? ESlateVisibility::Visible : ESlateVisibility::Collapsed;
 }
 
-int32 UWingsUserWidget::GetRemainingSpawns() const
+FText UWingsUserWidget::GetRemainingSpawnsText() const
 {
     if (AWingsGameMode* GM = GetWorld()->GetAuthGameMode<AWingsGameMode>())
     {
-        return GM->GetRemainingSpawns();
+        int32 Count = GM->GetRemainingSpawns();
+        return FText::Format(NSLOCTEXT("WingsUI", "RemainingSpawnsFormat", "남은 기체: {0}"), FText::AsNumber(Count));
     }
-    return 0;
+    return FText::GetEmpty();
+}
+
+bool UWingsUserWidget::IsWaitingForRetry() const
+{
+    if (AWingsGameMode* GM = GetWorld()->GetAuthGameMode<AWingsGameMode>())
+    {
+        return GM->IsWaitingForRetry();
+    }
+    return false;
+}
+
+ESlateVisibility UWingsUserWidget::GetRetryUIVisibility() const
+{
+    // 1. 재시도 대기 상태여야 함
+    // 2. 동시에 현재 조종 중인 대상이 발사대(Launcher)가 아니어야 함 (이미 발사대에 있으면 안내할 필요 없음)
+    bool bShouldShow = IsWaitingForRetry() && (Cast<AWingsLauncher>(GetOwningPlayerPawn()) == nullptr);
+    
+    return bShouldShow ? ESlateVisibility::Visible : ESlateVisibility::Collapsed;
 }

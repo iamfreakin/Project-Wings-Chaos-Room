@@ -36,5 +36,9 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Wings|Input|Flying")
 	TObjectPtr<UInputAction> IA_FreeLook;
+
+	/** [Global/Retry] 재시도시 사용하는 액션 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Wings|Input")
+	TObjectPtr<UInputAction> IA_Retry;
 	
 };
