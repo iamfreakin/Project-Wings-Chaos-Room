@@ -4,6 +4,8 @@
 #include "Launcher/WingsLauncher.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/ArrowComponent.h"
+#include "GameFramework/SpringArmComponent.h"
+#include "Camera/CameraComponent.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "Data/WingsInputConfigData.h"
@@ -25,11 +27,31 @@ AWingsLauncher::AWingsLauncher()
 
     LaunchDirectionIndicator = CreateDefaultSubobject<UArrowComponent>(TEXT("LaunchDirectionIndicator"));
     LaunchDirectionIndicator->SetupAttachment(LauncherMesh);
+
+    // 카메라 시스템 초기화
+    SpringArmComponent = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArmComponent"));
+    SpringArmComponent->SetupAttachment(LauncherMesh); // 발사대 회전을 따라가도록 메시에 부착
+    SpringArmComponent->TargetArmLength = DefaultArmLength;
+    SpringArmComponent->SocketOffset = DefaultSocketOffset;
+    SpringArmComponent->bEnableCameraLag = true;
+    SpringArmComponent->bEnableCameraRotationLag = true;
+    SpringArmComponent->CameraLagSpeed = 10.0f;
+    SpringArmComponent->CameraRotationLagSpeed = 8.0f;
+
+    CameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComponent"));
+    CameraComponent->SetupAttachment(SpringArmComponent);
 }
 
 void AWingsLauncher::BeginPlay()
 {
 	Super::BeginPlay();
+
+    // 초기 카메라 위치 설정
+    if (SpringArmComponent)
+    {
+        SpringArmComponent->TargetArmLength = DefaultArmLength;
+        SpringArmComponent->SocketOffset = DefaultSocketOffset;
+    }
 
     // Launcher 전용 입력 컨텍스트 추가
     if (APlayerController* PC = Cast<APlayerController>(GetController()))
@@ -51,15 +73,41 @@ void AWingsLauncher::Tick(float DeltaTime)
     if (bIsCharging)
     {
         CurrentLaunchPower = FMath::Clamp(CurrentLaunchPower + (DeltaTime * ChargeSpeed), 0.f, 1.f);
-        
-        if (GEngine)
-        {
-            GEngine->AddOnScreenDebugMessage(1, DeltaTime, FColor::Yellow, 
-                FString::Printf(TEXT("Launcher Charging: %.2f"), CurrentLaunchPower));
-        }
     }
 
+    UpdateCameraEffects(DeltaTime);
     UpdateTrajectory();
+}
+
+void AWingsLauncher::UpdateCameraEffects(float DeltaTime)
+{
+    if (!SpringArmComponent || !CameraComponent) return;
+
+    // 1. Zoom Effect (충전량에 따라 가까워짐)
+    float TargetArmLength = bIsCharging ? 
+        FMath::Lerp(DefaultArmLength, ChargeZoomArmLength, CurrentLaunchPower) : 
+        DefaultArmLength;
+    
+    SpringArmComponent->TargetArmLength = FMath::FInterpTo(SpringArmComponent->TargetArmLength, TargetArmLength, DeltaTime, 5.0f);
+
+    // 2. Shake Effect (충전량에 따라 미세하게 떨림)
+    if (bIsCharging && CurrentLaunchPower > 0.1f)
+    {
+        float ShakeAmount = CurrentLaunchPower * MaxShakeIntensity;
+        float Time = GetWorld()->GetTimeSeconds();
+
+        FVector ShakeOffset;
+        ShakeOffset.X = FMath::Sin(Time * ShakeFrequency) * ShakeAmount;
+        ShakeOffset.Y = FMath::Cos(Time * ShakeFrequency * 0.9f) * ShakeAmount;
+        ShakeOffset.Z = FMath::Sin(Time * ShakeFrequency * 1.1f) * ShakeAmount;
+
+        CameraComponent->SetRelativeLocation(ShakeOffset);
+    }
+    else
+    {
+        // 충전 중이 아니면 원래 위치로 복귀
+        CameraComponent->SetRelativeLocation(FMath::VInterpTo(CameraComponent->GetRelativeLocation(), FVector::ZeroVector, DeltaTime, 10.0f));
+    }
 }
 
 void AWingsLauncher::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)

@@ -9,6 +9,8 @@
 class USceneComponent;
 class UStaticMeshComponent;
 class UArrowComponent;
+class USpringArmComponent;
+class UCameraComponent;
 class UWingsInputConfigData;
 class UInputMappingContext;
 class AWingsPawnBase;
@@ -47,6 +49,10 @@ public:
     void UpdateTrajectory();
 
 protected:
+    /** 카메라 효과 처리 */
+    void UpdateCameraEffects(float DeltaTime);
+
+protected:
 	/** 컴포넌트 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<USceneComponent> RootSceneComponent;
@@ -56,6 +62,29 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<UArrowComponent> LaunchDirectionIndicator;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+    TObjectPtr<USpringArmComponent> SpringArmComponent;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+    TObjectPtr<UCameraComponent> CameraComponent;
+
+    /** 카메라 설정 */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Launcher | Camera")
+    float DefaultArmLength = 1200.f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Launcher | Camera")
+    float ChargeZoomArmLength = 800.f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Launcher | Camera")
+    FVector DefaultSocketOffset = FVector(0.f, 0.f, 200.f);
+
+    /** 카메라 흔들림 설정 (Procedural) */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Launcher | Camera")
+    float MaxShakeIntensity = 15.f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Launcher | Camera")
+    float ShakeFrequency = 50.f;
 
     /** 입력 설정 */
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
