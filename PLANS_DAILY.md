@@ -356,40 +356,45 @@
 
 ---
 
-## [2주차 13일차] 스테이지 관리 시스템(GameMode) 및 기체 수 제한 로직
+## [2주차 13일차] 스테이지 관리 및 수동 기체 전환 시스템 (완료)
 
 ### 1. 목표
-- 한 스테이지당 주어지는 기체 수(기본 3대) 관리 시스템 구축.
-- 기체 소진 시 게임 오버 처리 및 재시도 로직 구현.
-- `AWingsGameMode`에서 현재 스테이지 상태(기체 수, 남은 목표) 관리.
+- 한 스테이지당 주어지는 기체 수 관리 시스템 구축.
+- 기체 추락 시 자동으로 복귀하던 로직을 'R' 키 수동 입력 방식으로 변경.
+- 발사대 카메라 시스템 개선 (줌인, 쉐이크 효과 추가).
 
 ### 2. 영향 범위
-- `ProjectWings/Source/ProjectWings/Public/Core/WingsGameMode.h/cpp`
-- `ProjectWings/Source/ProjectWings/Public/Core/WingsPlayerController.h/cpp`
+- `AWingsGameMode`, `AWingsPlayerController`, `AWingsLauncher`
 
 ### 3. 상세 단계 (C++ Implementation)
-1. **GameMode 확장**: `TotalSpawnsAllowed`, `CurrentSpawnCount` 변수 추가.
-2. **기체 카운팅**: `WingsLauncher`에서 기체 발사 시 GameMode의 카운트를 증가시키는 델리게이트 또는 함수 호출.
-3. **상태 체크**: 기체 충돌/정지 시 GameMode에서 남은 기체 수를 체크하여 `Retry` UI 또는 다음 기체 준비 유도.
+1. **수동 전환**: `IA_Retry` 바인딩 및 `ReturnToLauncher` 연동.
+2. **카메라 연출**: `USpringArmComponent`를 발사대 메시에 부착하고 충전 파워에 따른 줌/쉐이크 로직 구현.
+3. **상태 관리**: `bIsWaitingForRetry` 변수를 통한 UI 및 입력 제어.
+
+### 4. Editor Workflow (중요)
+1. **입력 설정**: `IA_Retry` 생성 및 'R' 키 매핑.
+2. **UI 바인딩**: HUD에 재시도 안내 문구 추가 및 가시성 바인딩.
 
 ---
 
-## [2주차 14일차] 목표물 인터페이스(Target Interface) 및 레벨 전환 시스템
+## [2주차 14일차] 목표 시스템 및 이벤트 기반 결과 UI (완료)
 
 ### 1. 목표
-- 어떤 액터든 '파괴 목표'가 될 수 있도록 인터페이스 구현.
-- 모든 목표물 파괴 시 다음 스테이지로 이동하는 전환 시스템 구축.
+- 정해진 블록을 부수면 클리어되는 목표 시스템 구축.
+- 실무형 이벤트 기반(Event-Driven) 결과 화면 팝업 시스템 구현.
 
 ### 2. 영향 범위
-- `ProjectWings/Source/ProjectWings/Public/Core/WingsTargetInterface.h` (신규)
-- `ProjectWings/Source/ProjectWings/Public/Core/WingsGameMode.h/cpp`
-- `ProjectWings/Source/ProjectWings/Public/Environment/WingsDestructibleActor.h/cpp`
+- `AWingsDestructibleActor`, `AWingsGameMode`, `AWingsHUD`, `UWingsUserWidget`
 
 ### 3. 상세 단계 (C++ Implementation)
-1. **인터페이스 생성**: `IWingsTargetInterface` 정의 (`OnTargetDestroyed` 함수 포함).
-2. **목표물 등록**: 스테이지 시작 시 GameMode가 `IWingsTargetInterface`를 상속받은 모든 액터를 검색하여 리스트업.
-3. **파괴 감지**: `WingsDestructibleActor`가 완전히 파괴되거나 특정 조건 만족 시 인터페이스를 통해 GameMode에 알림.
-4. **레벨 전환**: 리스트가 비면 `UGameplayStatics::OpenLevel`을 통해 다음 스테이지 로드.
+1. **목표물 지정**: `AWingsDestructibleActor`에 `bIsTarget` 추가 및 파괴 시 알림.
+2. **이벤트 브로드캐스트**: `GameMode`에서 승리/패배 시 멀티캐스트 델리게이트 발송.
+3. **동적 위젯 생성**: `HUD`에서 이벤트를 구독하여 `Victory`/`GameOver` 위젯 생성 및 포커스 처리.
+4. **버튼 액션**: 다시 시작, 종료, 다음 레벨 이동 함수 구현.
+
+### 4. Editor Workflow (중요)
+1. **타겟 설정**: 맵 내 중요 블록의 `Is Target` 옵션 체크.
+2. **결과 위젯 제작**: `WBP_VictoryScreen`, `WBP_GameOverScreen` 생성 및 버튼 이벤트 연결.
 
 ---
 

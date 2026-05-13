@@ -202,3 +202,33 @@
 - **AWingsLauncher**: 기체 발사 성공 시 GameMode에 알림을 보내 카운트가 증가하도록 수정.
 - **AWingsPawnBase**: EWingsPawnState::Crashed 상태 진입 시 GameMode에 추락 알림을 보내 재시도 여부를 판단하도록 수정.
 - **AWingsPlayerController**: 발사대로 조종권을 돌려받고 입력 컨텍스트를 복구하는 ReturnToLauncher() 기능 추가.
+
+## [2026-05-13] 기체 전환 로직 개선 및 발사대 카메라 연출 고도화
+
+### Added
+- **수동 기체 전환 시스템**:
+  - 기체 추락 시 자동으로 복귀하던 타이머(3.0s)를 제거하고 'R' 키 입력을 통한 수동 복귀 로직 구현.
+  - `UWingsInputConfigData`에 `IA_Retry` 추가 및 `WingsPlayerController` 바인딩.
+- **발사대 카메라 시스템 (Launcher Camera)**:
+  - `AWingsLauncher`에 `SpringArm` 및 `CameraComponent`를 C++로 추가하여 발사대 파묻힘 현상 해결.
+  - **Dynamic Look**: 발사대 회전에 따라 카메라가 부드럽게 추적하는 동적 시점 구현.
+  - **Charge Feedback**: 발사 게이지 충전량에 비례한 카메라 줌인(Zoom-in) 및 절차적(Procedural) 카메라 흔들림(Shake) 효과 추가.
+
+### Improved
+- **UI 가시성 로직**: 재시도 안내 문구가 발사대에 있을 때는 보이지 않고, 기체 추락 상태에서만 나타나도록 `GetRetryUIVisibility` 조건 세분화.
+
+## [2026-05-13] 승리/패배 시스템 및 이벤트 기반 UI 아키텍처 리팩토링
+
+### Added
+- **스테이지 목표(Target) 시스템**:
+  - `AWingsDestructibleActor`에 `bIsTarget` 속성을 추가하여 클리어 필수 목표 블록 지정 기능 구현.
+  - `AWingsGameMode`에서 월드 내 목표 블록 수를 자동 카운트하고 파괴 현황을 실시간 추적.
+- **이벤트 기반(Event-Driven) UI 아키텍처**:
+  - `DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam`을 이용한 `OnGameStateChanged` 델리게이트 구현.
+  - `WingsHUD`에서 이벤트를 구독하여 승리/패배 시 결과 위젯(`Victory`/`GameOver`)을 동적으로 생성 및 팝업.
+- **UI 액션 기능**:
+  - `UWingsUserWidget`에 `RestartLevel`, `QuitGame`, `LoadNextLevel` 함수를 구현하여 결과 화면 버튼 연동 지원.
+
+### Refactored
+- **Decoupling**: 위젯이 매 프레임 GameMode의 상태를 묻는 폴링(Polling) 방식에서, 이벤트 발생 시에만 반응하는 브로드캐스트(Broadcast) 방식으로 리팩토링하여 성능 및 구조 개선.
+- **UX**: 게임 종료 시 마우스 커서 활성화 및 입력 모드 전환(`SetInputModeUIOnly`)을 통해 결과 화면 조작 편의성 확보.
