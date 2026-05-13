@@ -109,7 +109,7 @@ public:
 
 	/** 충격파 파괴 강도 */
 	UPROPERTY(EditAnywhere, Category = "Flight|Destruction", meta = (ToolTip = "충격파의 세기입니다. 장애물의 결합력을 끊는 데 사용됩니다."))
-	float DestructionFieldStrength = 500000.0f;
+	float DestructionFieldStrength = 10000000.0f;
 
 	/** 파괴력 계산 시 기준이 되는 질량 */
 	UPROPERTY(EditAnywhere, Category = "Flight|Destruction", meta = (ToolTip = "파괴력(강도/반경) 계산 시 기준이 되는 질량입니다. 실제 질량이 이보다 크면 파괴력이 증폭됩니다."))

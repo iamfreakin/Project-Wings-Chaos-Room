@@ -36,15 +36,21 @@ void AWingsHUD::HandleGameStateChanged(bool bIsWin)
 	{
 		if (UUserWidget* ResultWidget = CreateWidget<UUserWidget>(GetWorld(), SelectedClass))
 		{
-			ResultWidget->AddToViewport();
-
 			// 마우스 커서를 보여주고 게임 입력을 UI로 집중시킴 (실무 필수 처리)
 			if (APlayerController* PC = GetOwningPlayerController())
 			{
+				ResultWidget->AddToViewport();
+				
+				// [오류 수정] 위젯이 포커스를 받을 수 있도록 설정 (에러 로그 방지)
+				ResultWidget->SetIsFocusable(true);
+
 				FInputModeUIOnly InputMode;
 				InputMode.SetWidgetToFocus(ResultWidget->TakeWidget());
 				PC->SetInputMode(InputMode);
 				PC->bShowMouseCursor = true;
+
+				// 명시적으로 키보드 포커스 부여
+				ResultWidget->SetKeyboardFocus();
 			}
 		}
 	}

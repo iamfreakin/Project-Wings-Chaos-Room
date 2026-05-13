@@ -438,16 +438,19 @@ void AWingsPawnBase::OnMeshHit(UPrimitiveComponent* HitComponent, AActor* OtherA
 	if (CurrentState != EWingsPawnState::Flying) return;
 
 	float DamageMultiplier = 1.0f;
+	bool bIsAttributeMatched = true;
 
 	// 상성 체크: AWingsDestructibleActor인 경우 속성을 비교합니다.
 	if (AWingsDestructibleActor* DestructibleActor = Cast<AWingsDestructibleActor>(OtherActor))
 	{
-		// 1. 속성 상성 체크
-		if (Attribute != DestructibleActor->GetAttribute())
+		EWingsAttribute TargetAttribute = DestructibleActor->GetAttribute();
+
+		// 1. 속성 상성 체크 (Universal 속성은 무조건 패스)
+		if (Attribute != EWingsAttribute::Universal && Attribute != TargetAttribute)
 		{
-			// 상성이 맞지 않으면 극소량(0.1%)의 데미지만 고정 적용 (폭발 배수 미적용)
-			DamageMultiplier = 0.001f; 
-			UE_LOG(LogWings, Warning, TEXT("Attribute Mismatch! Damage Minimized (0.1%%)."));
+			// 상성이 맞지 않으면 거의 없는 수준(0.01%)의 데미지만 적용
+			DamageMultiplier = 0.0001f;
+			bIsAttributeMatched = false;
 		}
 		else
 		{
@@ -455,8 +458,20 @@ void AWingsPawnBase::OnMeshHit(UPrimitiveComponent* HitComponent, AActor* OtherA
 			if (const UWingsDestructionData* Data = DestructibleActor->GetDestructionData())
 			{
 				DamageMultiplier = Data->ExplosionForceMultiplier;
-				UE_LOG(LogWings, Log, TEXT("Attribute Match! Applying Explosion Multiplier: %.1f"), DamageMultiplier);
 			}
+		}
+
+		// 상세 로그 출력 (분석용)
+		FString PawnAttrStr = StaticEnum<EWingsAttribute>()->GetNameStringByValue((int64)Attribute);
+		FString TargetAttrStr = StaticEnum<EWingsAttribute>()->GetNameStringByValue((int64)TargetAttribute);
+
+		if (bIsAttributeMatched)
+		{
+			UE_LOG(LogWings, Log, TEXT("Attribute Match! Pawn[%s] vs Target[%s]. Multiplier: %.1f"), *PawnAttrStr, *TargetAttrStr, DamageMultiplier);
+		}
+		else
+		{
+			UE_LOG(LogWings, Warning, TEXT("Attribute Mismatch! Pawn[%s] vs Target[%s]. Damage Minimized (0.01%%)."), *PawnAttrStr, *TargetAttrStr);
 		}
 	}
 
@@ -465,7 +480,6 @@ void AWingsPawnBase::OnMeshHit(UPrimitiveComponent* HitComponent, AActor* OtherA
 
 	UE_LOG(LogWings, Log, TEXT("Pawn Crashed! Impact Speed: %.1f, Final Multiplier: %.4f"), GetVelocity().Size(), DamageMultiplier);
 }
-
 void AWingsPawnBase::SpawnDestructionField(FVector ContactLocation, FVector HitNormal, float DamageMultiplier)
 {
 	if (!FieldSystemComponent || !MeshComponent) return;

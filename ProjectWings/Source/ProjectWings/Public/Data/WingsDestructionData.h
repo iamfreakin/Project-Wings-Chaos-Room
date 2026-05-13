@@ -18,11 +18,11 @@ class PROJECTWINGS_API UWingsDestructionData : public UPrimaryDataAsset
 public:
 	/** 파괴가 시작되는 최소 충격 강도 (Damage Threshold) */
 	UPROPERTY(EditAnywhere, Category = "Destruction|Physics", meta = (ClampMin = "0.0"))
-	float DamageThreshold = 500000000.0f;
+	float DamageThreshold = 100000.0f;
 
 	/** 조각들 사이의 결합력 (Internal Strain) - 높을수록 잘 안부서짐 */
 	UPROPERTY(EditAnywhere, Category = "Destruction|Physics", meta = (ClampMin = "0.0"))
-	float InternalStrain = 50000.0f;
+	float InternalStrain = 10.0f;
 
 	/** 파편이 유지되는 시간 (초). 이후에는 사라지도록 설정 가능 */
 	UPROPERTY(EditAnywhere, Category = "Destruction|Optimization", meta = (ClampMin = "0.0"))
@@ -34,7 +34,7 @@ public:
 
 	/** 충돌 시 데미지를 발생시킬지 여부 */
 	UPROPERTY(EditAnywhere, Category = "Destruction|ChainReaction")
-	bool bEnableCollisionDamage = true;
+	bool bEnableCollisionDamage = false;
 
 	/** 파괴 발생 시 주변으로 충격을 전파할지 여부 */
 	UPROPERTY(EditAnywhere, Category = "Destruction|ChainReaction")
