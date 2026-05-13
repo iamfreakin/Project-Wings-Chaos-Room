@@ -4,6 +4,7 @@
 #include "Environment/WingsDestructibleActor.h"
 #include "GeometryCollection/GeometryCollectionComponent.h"
 #include "Data/WingsDestructionData.h"
+#include "Core/WingsGameMode.h"
 
 AWingsDestructibleActor::AWingsDestructibleActor()
 {
@@ -50,6 +51,17 @@ void AWingsDestructibleActor::ApplyDestructionData()
 
 void AWingsDestructibleActor::OnChaosBreak(const FChaosBreakEvent& BreakEvent)
 {
+	// 1. 목표물 파괴 체크
+	if (bIsTarget && !bHasBeenCounted)
+	{
+		if (AWingsGameMode* GM = GetWorld()->GetAuthGameMode<AWingsGameMode>())
+		{
+			bHasBeenCounted = true;
+			GM->OnTargetDestroyed();
+		}
+	}
+
+	// 2. 파괴 전파 (기존 로직)
 	if (!DestructionData || !DestructionData->bEnablePropagation) return;
 
 	if (UGeometryCollectionComponent* GCC = GetGeometryCollectionComponent())

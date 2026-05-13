@@ -110,3 +110,75 @@ ESlateVisibility UWingsUserWidget::GetRetryUIVisibility() const
     
     return bShouldShow ? ESlateVisibility::Visible : ESlateVisibility::Collapsed;
 }
+
+int32 UWingsUserWidget::GetRemainingTargets() const
+{
+    if (AWingsGameMode* GM = GetWorld()->GetAuthGameMode<AWingsGameMode>())
+    {
+        return GM->GetRemainingTargets();
+    }
+    return 0;
+}
+
+int32 UWingsUserWidget::GetTotalTargets() const
+{
+    if (AWingsGameMode* GM = GetWorld()->GetAuthGameMode<AWingsGameMode>())
+    {
+        return GM->GetTotalTargets();
+    }
+    return 0;
+}
+
+FText UWingsUserWidget::GetTargetProgressText() const
+{
+    if (AWingsGameMode* GM = GetWorld()->GetAuthGameMode<AWingsGameMode>())
+    {
+        return FText::Format(
+            NSLOCTEXT("WingsUI", "TargetProgressFormat", "목표 파괴: {0} / {1}"), 
+            FText::AsNumber(GM->GetTotalTargets() - GM->GetRemainingTargets()),
+            FText::AsNumber(GM->GetTotalTargets())
+        );
+    }
+    return FText::GetEmpty();
+}
+
+ESlateVisibility UWingsUserWidget::GetWinUIVisibility() const
+{
+    if (AWingsGameMode* GM = GetWorld()->GetAuthGameMode<AWingsGameMode>())
+    {
+        return GM->IsGameWon() ? ESlateVisibility::Visible : ESlateVisibility::Collapsed;
+    }
+    return ESlateVisibility::Collapsed;
+}
+
+ESlateVisibility UWingsUserWidget::GetLossUIVisibility() const
+{
+    if (AWingsGameMode* GM = GetWorld()->GetAuthGameMode<AWingsGameMode>())
+    {
+        return GM->IsGameLost() ? ESlateVisibility::Visible : ESlateVisibility::Collapsed;
+    }
+    return ESlateVisibility::Collapsed;
+}
+
+void UWingsUserWidget::RestartLevel()
+{
+    FName CurrentLevelName = *GetWorld()->GetMapName();
+    // 맵 이름 앞에 붙는 prefix 제거 (보통 "/Game/Maps/TestMap" 식이라 실제 이름만 추출 필요할 수 있음)
+    UGameplayStatics::OpenLevel(GetWorld(), FName(*GetWorld()->GetName()));
+}
+
+void UWingsUserWidget::QuitGame()
+{
+    if (APlayerController* PC = GetOwningPlayer())
+    {
+        UKismetSystemLibrary::QuitGame(GetWorld(), PC, EQuitPreference::Quit, false);
+    }
+}
+
+void UWingsUserWidget::LoadNextLevel(FName LevelName)
+{
+    if (!LevelName.IsNone())
+    {
+        UGameplayStatics::OpenLevel(GetWorld(), LevelName);
+    }
+}
