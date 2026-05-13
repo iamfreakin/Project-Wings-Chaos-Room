@@ -39,6 +39,7 @@ void AWingsPlayerController::BeginPlay()
 
 void AWingsPlayerController::TransitionToFlight(APawn* FlightPawn, APawn* PreviousPawn)
 {
+    // ... (기존 구현 생략 없이 전체 유지)
     if (!FlightPawn)
     {
         UE_LOG(LogWings, Error, TEXT("TransitionToFlight failed: FlightPawn is null!"));
@@ -70,5 +71,40 @@ void AWingsPlayerController::TransitionToFlight(APawn* FlightPawn, APawn* Previo
              Subsystem->AddMappingContext(WingsPawn->GetDefaultMappingContext(), 0);
              UE_LOG(LogWings, Display, TEXT("Added Pawn Mapping Context."));
          }
+    }
+}
+
+void AWingsPlayerController::ReturnToLauncher()
+{
+    // 현재 조종 중인 Pawn의 입력 컨텍스트 제거
+    if (APawn* CurrentPawn = GetPawn())
+    {
+        if (AWingsPawnBase* WingsPawn = Cast<AWingsPawnBase>(CurrentPawn))
+        {
+            if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer()))
+            {
+                Subsystem->RemoveMappingContext(WingsPawn->GetDefaultMappingContext());
+            }
+        }
+    }
+
+    // 월드에서 Launcher를 찾아 다시 조종
+    TArray<AActor*> FoundLaunchers;
+    UGameplayStatics::GetAllActorsOfClass(GetWorld(), AWingsLauncher::StaticClass(), FoundLaunchers);
+
+    if (FoundLaunchers.Num() > 0)
+    {
+        if (AWingsLauncher* Launcher = Cast<AWingsLauncher>(FoundLaunchers[0]))
+        {
+            Possess(Launcher);
+            
+            // Launcher 입력 컨텍스트 다시 추가
+            if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer()))
+            {
+                Subsystem->AddMappingContext(Launcher->GetLauncherMappingContext(), 0);
+            }
+
+            UE_LOG(LogWings, Display, TEXT("Returned to Launcher."));
+        }
     }
 }

@@ -190,3 +190,15 @@
 ### Improved
 - **UX/멀미 방지**: 기체가 추락하며 뒤집힐 때 카메라가 함께 돌지 않도록 개선하여 시각적 안정성 확보.
 - **파괴 연출 조망**: 충돌 후 카메라가 자동으로 넓은 시야를 확보하여 연쇄 파괴 효과를 더 잘 감상할 수 있게 개선.
+
+## [2026-05-13] 13일차: 스테이지 관리 시스템 및 기체 수 제한 구현
+
+### Added
+- **AWingsGameMode**: 스테이지당 허용된 기체 수(TotalSpawnsAllowed) 및 현재 사용량(CurrentSpawnCount) 관리 로직 추가.
+- **Retry System**: 기체 추락 후 3초 뒤 발사대로 자동 복귀하여 다시 발사할 수 있는 재시도 루프 구현.
+- **UI Integration**: HUD 위젯에서 남은 기체 수를 실시간으로 가져올 수 있는 GetRemainingSpawns() 함수 추가.
+
+### Changed
+- **AWingsLauncher**: 기체 발사 성공 시 GameMode에 알림을 보내 카운트가 증가하도록 수정.
+- **AWingsPawnBase**: EWingsPawnState::Crashed 상태 진입 시 GameMode에 추락 알림을 보내 재시도 여부를 판단하도록 수정.
+- **AWingsPlayerController**: 발사대로 조종권을 돌려받고 입력 컨텍스트를 복구하는 ReturnToLauncher() 기능 추가.

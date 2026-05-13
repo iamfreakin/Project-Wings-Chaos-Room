@@ -51,11 +51,15 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Wings|UI")
 	ESlateVisibility GetLaunchPowerVisibility() const;
 
-	/** 플레이어가 비행 중일 때만 UI를 표시합니다. (속도계, 연료 게이지용) */
+	/** 현재 플레이어가 비행 중일 때만 UI를 표시합니다. (속도계, 연료 게이지용) */
 	UFUNCTION(BlueprintPure, Category = "Wings|UI")
 	ESlateVisibility GetFlightUIVisibility() const;
 
 	/** 플레이어가 발사대에 있을 때만 UI를 표시합니다. (조준, 파워 게이지용) */
 	UFUNCTION(BlueprintPure, Category = "Wings|UI")
 	ESlateVisibility GetLauncherUIVisibility() const;
-};
+
+	/** 현재 스테이지의 남은 기체 수를 반환합니다. */
+	UFUNCTION(BlueprintPure, Category = "Wings|UI")
+	int32 GetRemainingSpawns() const;
+	};

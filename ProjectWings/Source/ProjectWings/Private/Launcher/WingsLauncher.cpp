@@ -9,6 +9,7 @@
 #include "Data/WingsInputConfigData.h"
 #include "Pawn/WingsPawnBase.h"
 #include "Core/WingsPlayerController.h"
+#include "Core/WingsGameMode.h"
 #include "Kismet/GameplayStatics.h"
 #include "ProjectWings/ProjectWings.h"
 
@@ -123,6 +124,12 @@ void AWingsLauncher::Input_LaunchCompleted(const FInputActionValue& Value)
             if (UStaticMeshComponent* Mesh = LaunchedPawn->GetMeshComponent())
             {
                 Mesh->AddImpulse(LaunchVelocity, NAME_None, true);
+            }
+
+            // [추가] GameMode에 발사 알림
+            if (AWingsGameMode* GM = GetWorld()->GetAuthGameMode<AWingsGameMode>())
+            {
+                GM->OnAircraftLaunched();
             }
 
             // 5. 조종권 전환

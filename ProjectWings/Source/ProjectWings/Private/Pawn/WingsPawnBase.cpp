@@ -7,6 +7,7 @@
 #include "NiagaraComponent.h"
 #include "NiagaraFunctionLibrary.h"
 #include "Core/WingsGameState.h"
+#include "Core/WingsGameMode.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "Data/WingsInputConfigData.h"
@@ -296,6 +297,12 @@ void AWingsPawnBase::SetPawnState(EWingsPawnState NewState)
 
 	case EWingsPawnState::Crashed:
 		if (EngineTrailComponent) EngineTrailComponent->Deactivate();
+
+		// [추가] GameMode에 추락 알림
+		if (AWingsGameMode* GM = GetWorld()->GetAuthGameMode<AWingsGameMode>())
+		{
+			GM->OnAircraftCrashed();
+		}
 
 		// [사망 카메라 핵심 설정] 충돌 직후 기체가 회전하더라도 카메라 화면은 수평과 안정을 유지하게 함
 		if (SpringArmComponent)

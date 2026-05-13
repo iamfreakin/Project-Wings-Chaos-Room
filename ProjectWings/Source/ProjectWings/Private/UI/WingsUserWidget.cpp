@@ -4,6 +4,7 @@
 #include "UI/WingsUserWidget.h"
 #include "Pawn/WingsPawnBase.h"
 #include "Launcher/WingsLauncher.h"
+#include "Core/WingsGameMode.h"
 #include "Kismet/GameplayStatics.h"
 
 AWingsPawnBase* UWingsUserWidget::GetOwningWingsPawn() const
@@ -80,4 +81,13 @@ ESlateVisibility UWingsUserWidget::GetLauncherUIVisibility() const
 {
     // 현재 조종 중인 Pawn이 발사대(WingsLauncher)일 때만 표시
     return Cast<AWingsLauncher>(GetOwningPlayerPawn()) ? ESlateVisibility::Visible : ESlateVisibility::Collapsed;
+}
+
+int32 UWingsUserWidget::GetRemainingSpawns() const
+{
+    if (AWingsGameMode* GM = GetWorld()->GetAuthGameMode<AWingsGameMode>())
+    {
+        return GM->GetRemainingSpawns();
+    }
+    return 0;
 }

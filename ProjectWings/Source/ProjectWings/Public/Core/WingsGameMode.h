@@ -16,5 +16,24 @@ class PROJECTWINGS_API AWingsGameMode : public AGameModeBase
 
 public:
 	AWingsGameMode();
-	
+
+    /** 기체 발사 시 호출 */
+    virtual void OnAircraftLaunched();
+
+    /** 기체 추락 시 호출 */
+    virtual void OnAircraftCrashed();
+
+protected:
+    /** 스테이지당 허용된 총 발사 횟수 */
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Wings|Stage")
+    int32 TotalSpawnsAllowed = 3;
+
+    /** 현재까지 발사된 기체 수 */
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Wings|Stage")
+    int32 CurrentSpawnCount = 0;
+
+public:
+    /** 게터 */
+    UFUNCTION(BlueprintPure, Category = "Wings|Stage")
+    int32 GetRemainingSpawns() const { return FMath::Max(0, TotalSpawnsAllowed - CurrentSpawnCount); }
 };

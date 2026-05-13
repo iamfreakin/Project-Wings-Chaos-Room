@@ -356,34 +356,60 @@
 
 ---
 
-## [2주차 13일차] 데이터 에셋 기반 스펙 관리 및 고급 사망 카메라(Death Cam) 구현
+## [2주차 13일차] 스테이지 관리 시스템(GameMode) 및 기체 수 제한 로직
 
 ### 1. 목표
-- 기체의 모든 비행 물리 및 카메라 수치를 `UWingsFlightData` 에셋으로 완전히 이전하여 관리 편의성 증대.
-- 충돌 시 기체의 회전으로부터 카메라를 해제하고, 충돌 지점을 조망할 수 있는 **'관찰 시점'**으로 부드럽게 전환하는 기능 구현.
+- 한 스테이지당 주어지는 기체 수(기본 3대) 관리 시스템 구축.
+- 기체 소진 시 게임 오버 처리 및 재시도 로직 구현.
+- `AWingsGameMode`에서 현재 스테이지 상태(기체 수, 남은 목표) 관리.
 
 ### 2. 영향 범위
-- `ProjectWings/Source/ProjectWings/Public/Data/WingsFlightData.h`
-- `ProjectWings/Source/ProjectWings/Public/Pawn/WingsPawnBase.h`
-- `ProjectWings/Source/ProjectWings/Private/Pawn/WingsPawnBase.cpp`
+- `ProjectWings/Source/ProjectWings/Public/Core/WingsGameMode.h/cpp`
+- `ProjectWings/Source/ProjectWings/Public/Core/WingsPlayerController.h/cpp`
 
 ### 3. 상세 단계 (C++ Implementation)
-1. **데이터 에셋 확장 (`UWingsFlightData`)**: `DeathCamDistance`, `DeathCamHeight`, `DeathCamInterpSpeed` 등 카메라 제어 변수 추가.
-2. **사망 카메라 로직 구현**:
-   - `SetPawnState(Crashed)` 시 `SpringArm`의 회전 상속(`bInheritPitch/Yaw/Roll`)을 해제.
-   - `SpringArm->bAbsoluteRotation = true`를 통해 기체가 뒤집혀도 카메라는 수평을 유지하도록 설정.
-3. **카메라 보간 (`Tick`)**: `Crashed` 상태에서 `TargetArmLength`와 `SocketOffset`을 부드럽게 변경하여 기체를 멀리서 내려다보는 구도 형성.
-4. **리팩토링**: `WingsPawnBase` 내 하드코딩된 수치들을 데이터 에셋 참조 방식으로 전환.
+1. **GameMode 확장**: `TotalSpawnsAllowed`, `CurrentSpawnCount` 변수 추가.
+2. **기체 카운팅**: `WingsLauncher`에서 기체 발사 시 GameMode의 카운트를 증가시키는 델리게이트 또는 함수 호출.
+3. **상태 체크**: 기체 충돌/정지 시 GameMode에서 남은 기체 수를 체크하여 `Retry` UI 또는 다음 기체 준비 유도.
 
-### 4. Editor Workflow (중요)
-1. **데이터 에셋 업데이트**: `DA_WingsFlight_Default`에서 새로 추가된 `Death Cam` 수치 조정 및 기존 물리 수치 검토.
-2. **블루프린트 확인**: `BP_WingsPawn`에서 `FlightData` 할당 여부 확인.
+---
 
-### 5. Success Criteria
-- 충돌 후 기체가 회전해도 카메라는 흔들리지 않고 수평을 유지함.
-- 카메라가 기체로부터 부드럽게 멀어지며 주변 파괴 환경을 한눈에 보여줌.
-- 모든 비행/카메라 수치를 데이터 에셋에서 즉시 수정 가능함.
+## [2주차 14일차] 목표물 인터페이스(Target Interface) 및 레벨 전환 시스템
 
-### 6. 검증 방법
-- PIE 실행 후 충돌 테스트 및 데이터 에셋 수치 실시간 튜닝 확인.
+### 1. 목표
+- 어떤 액터든 '파괴 목표'가 될 수 있도록 인터페이스 구현.
+- 모든 목표물 파괴 시 다음 스테이지로 이동하는 전환 시스템 구축.
+
+### 2. 영향 범위
+- `ProjectWings/Source/ProjectWings/Public/Core/WingsTargetInterface.h` (신규)
+- `ProjectWings/Source/ProjectWings/Public/Core/WingsGameMode.h/cpp`
+- `ProjectWings/Source/ProjectWings/Public/Environment/WingsDestructibleActor.h/cpp`
+
+### 3. 상세 단계 (C++ Implementation)
+1. **인터페이스 생성**: `IWingsTargetInterface` 정의 (`OnTargetDestroyed` 함수 포함).
+2. **목표물 등록**: 스테이지 시작 시 GameMode가 `IWingsTargetInterface`를 상속받은 모든 액터를 검색하여 리스트업.
+3. **파괴 감지**: `WingsDestructibleActor`가 완전히 파괴되거나 특정 조건 만족 시 인터페이스를 통해 GameMode에 알림.
+4. **레벨 전환**: 리스트가 비면 `UGameplayStatics::OpenLevel`을 통해 다음 스테이지 로드.
+
+---
+
+## [2주차 15일차] 특수 기체 및 장갑 블록(Strain Threshold) 구현
+
+### 1. 목표
+- 질량 기반의 파괴 상성 시스템 구현 (Heavy Plane vs Iron Block).
+- 충돌 시 대폭발을 일으키는 특수 기체(Bomb Plane) 로직 추가.
+
+### 3. 상세 단계 (C++ Implementation)
+1. **장갑 블록 설정**: `Geometry Collection`의 `Damage Threshold`를 데이터 기반으로 설정하여 일반 기체 충돌 시 파괴되지 않게 방어.
+2. **Heavy Plane**: `WingsFlightData`에서 질량 배율을 높게 설정하여 장갑 블록의 임계치를 넘도록 튜닝.
+3. **Bomb Plane**: 충돌 시 `AServerFieldSystem`을 활용하여 강력한 `RadialFalloff` 및 `RadialImpulse` 발생.
+
+---
+
+## [2주차 16일차] 전체 스테이지(1~4) 밸런싱 및 폴리싱 (Death Cam 포함)
+
+### 1. 목표
+- Stage 1~4의 물리 수치 및 난이도 밸런싱.
+- 충돌 시 충돌 지점을 분석할 수 있는 '고급 사망 카메라' 최종 적용.
+- 전체 게임 루프(Start -> Stage 1~4 -> Success/Fail) 폴리싱.
 
