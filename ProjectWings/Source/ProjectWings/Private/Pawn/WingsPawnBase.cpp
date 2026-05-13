@@ -261,6 +261,23 @@ void AWingsPawnBase::Tick(float DeltaTime)
 
 			// 3. 시야각(FOV) 확장: 충격 현장을 더 넓게 볼 수 있도록 최대 FOV로 부드럽게 전환
 			CameraComponent->SetFieldOfView(FMath::FInterpTo(CameraComponent->FieldOfView, LocalMaxFOV, DeltaTime, DeathInterpSpeed));
+
+			// 4. [개선] 카메라 회전 보간: 사용자가 조작 중이 아닐 때만 부드럽게 수평 구도로 전환
+			if (!bIsDeathCamInitialized)
+			{
+				FRotator CurrentRot = SpringArmComponent->GetComponentRotation();
+				// Yaw는 0으로 강제하지 않고 현재 Yaw를 유지하여 방향감 보존
+				FRotator TargetRot = FRotator(-30.0f, CurrentRot.Yaw, 0.0f);
+				
+				FRotator NewRot = FMath::RInterpTo(CurrentRot, TargetRot, DeltaTime, DeathInterpSpeed);
+				SpringArmComponent->SetWorldRotation(NewRot);
+
+				// 목표 각도에 충분히 근접하면 자동 보정 완료 처리
+				if (CurrentRot.Equals(TargetRot, 1.0f))
+				{
+					bIsDeathCamInitialized = true;
+				}
+			}
 		}
 	}
 }
@@ -304,20 +321,19 @@ void AWingsPawnBase::SetPawnState(EWingsPawnState NewState)
 			GM->OnAircraftCrashed();
 		}
 
+		bIsDeathCamInitialized = false;
+
 		// [사망 카메라 핵심 설정] 충돌 직후 기체가 회전하더라도 카메라 화면은 수평과 안정을 유지하게 함
 		if (SpringArmComponent)
 		{
-			// 1. 회전 상속 해제: 기체의 Pitch, Yaw, Roll 회전이 스프링 암(카메라)에 전달되지 않도록 차단 (멀미 방지)
 			SpringArmComponent->bInheritPitch = false;
 			SpringArmComponent->bInheritYaw = false;
 			SpringArmComponent->bInheritRoll = false;
-
-			// 2. 절대 회전 사용: 기체가 월드상에서 뒤집혀도 카메라는 월드 좌표계의 수평을 유지하도록 설정
 			SpringArmComponent->SetUsingAbsoluteRotation(true);
 
-			// 3. 초기 시선 고정: 충돌 시점의 방향을 유지하되, 약간 아래(-20도)를 내려다보는 안정적인 각도로 월드 회전값 강제 설정
+			// 충돌 직후 '수평(Roll)'만 즉시 보정하여 화면 뒤집힘 방지
 			FRotator CurrentRot = SpringArmComponent->GetComponentRotation();
-			CurrentRot.Pitch = -20.0f; 
+			CurrentRot.Roll = 0.0f;
 			SpringArmComponent->SetWorldRotation(CurrentRot);
 		}
 		break;
@@ -355,6 +371,9 @@ void AWingsPawnBase::Input_FlightMouse(const FInputActionValue& Value)
 		// [사망 카메라 자유 회전] 충돌 상태에서 마우스 이동 시 기체 주위를 공전(Orbit)함
 		if (SpringArmComponent)
 		{
+			// 플레이어가 조작을 시작하면 자동 보정 중단
+			bIsDeathCamInitialized = true;
+
 			FRotator NewRotation = SpringArmComponent->GetComponentRotation();
 			NewRotation.Yaw += (LookAxisVector.X * FreeLookSens);
 			// 바닥을 뚫지 않도록 Pitch 제한 (-80도 ~ 20도)

@@ -71,6 +71,9 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Wings|State")
 	bool bIsFreeLooking;
 
+	/** 사망 카메라 초기 자동 보정 완료 여부 */
+	bool bIsDeathCamInitialized;
+
 	/** 입력 매핑 컨텍스트 (Enhanced Input) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Wings|Input")
 	TObjectPtr<UInputMappingContext> DefaultMappingContext;
