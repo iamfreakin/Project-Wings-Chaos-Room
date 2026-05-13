@@ -232,3 +232,17 @@
 ### Refactored
 - **Decoupling**: 위젯이 매 프레임 GameMode의 상태를 묻는 폴링(Polling) 방식에서, 이벤트 발생 시에만 반응하는 브로드캐스트(Broadcast) 방식으로 리팩토링하여 성능 및 구조 개선.
 - **UX**: 게임 종료 시 마우스 커서 활성화 및 입력 모드 전환(`SetInputModeUIOnly`)을 통해 결과 화면 조작 편의성 확보.
+
+## [2026-05-13] 재질 기반 상성(Affinity) 시스템 구현
+
+### Added
+- **속성 시스템(EWingsAttribute)**: Stone(돌), Wood(나무), Grass(풀) 3종 속성 정의.
+- **상성 기반 데미지 로직**:
+  - `AWingsPawnBase::OnMeshHit`에서 충돌 대상과의 속성 일치 여부 체크.
+  - 상성 불일치 시 데미지 배율(DamageMultiplier)을 0.01로 적용하여 파괴 억제.
+  - `SpawnDestructionField`에서 배율에 따른 필드 강도 및 반경 조절 로직 통합.
+- **인터페이스 확장**: `AWingsDestructibleActor`에 속성 게터(`GetAttribute`) 추가.
+
+### Improved
+- **데이터 기반 설계**: 하드코딩 없이 각 기체와 블록의 디테일 패널에서 속성을 지정할 수 있도록 `UPROPERTY` 연동.
+- **피드백 강화**: 상성 불일치 시 `LogWings`를 통해 속성 정보를 출력하여 디버깅 편의성 확보.

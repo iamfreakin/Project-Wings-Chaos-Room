@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GeometryCollection/GeometryCollectionActor.h"
 #include "Chaos/ChaosGameplayEventDispatcher.h"
+#include "ProjectWings/ProjectWings.h"
 #include "WingsDestructibleActor.generated.h"
 
 class UWingsDestructionData;
@@ -29,6 +30,10 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Wings|Destruction")
 	TObjectPtr<UWingsDestructionData> DestructionData;
 
+	/** 오브젝트의 재질 속성 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Wings|Destruction")
+	EWingsAttribute Attribute = EWingsAttribute::None;
+
 	/** 이 블록을 파괴하는 것이 스테이지 목표인지 여부 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Wings|Destruction")
 	bool bIsTarget = false;
@@ -46,5 +51,11 @@ protected:
 public:
     UFUNCTION(BlueprintPure, Category = "Wings|Destruction")
     bool IsTarget() const { return bIsTarget; }
+
+    UFUNCTION(BlueprintPure, Category = "Wings|Destruction")
+    EWingsAttribute GetAttribute() const { return Attribute; }
+
+	UFUNCTION(BlueprintPure, Category = "Wings|Destruction")
+	const UWingsDestructionData* GetDestructionData() const { return DestructionData.Get(); }
 	
 };

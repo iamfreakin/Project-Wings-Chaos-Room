@@ -41,11 +41,19 @@ void AWingsDestructibleActor::ApplyDestructionData()
 		// 파괴 이벤트 알림 활성화 (연쇄 파괴 로직 구동용)
 		GCC->SetNotifyBreaks(true);
 
+		// [추가] 초기 가시성 및 물리 안정성 확보를 위한 설정
+		GCC->SetSimulatePhysics(true);
+		GCC->SetEnableGravity(true);
+		
+		// 초기 상태를 정적(Static)으로 설정하여 충격 전까지 고정
+		// UE 5.6 규격에 맞게 SetObjectState 사용
+		// GCC->SetObjectState(Chaos::EObjectStateType::Static); // 필요시 주석 해제하여 사용
+		
+		// 렌더링 상태 강제 갱신 유도
+		GCC->MarkRenderStateDirty();
+
 		// 이벤트 바인딩
 		GCC->OnChaosBreakEvent.AddDynamic(this, &AWingsDestructibleActor::OnChaosBreak);
-
-		// 내부 결합력 설정 (실제 적용을 위해 필드 시스템이나 에셋 설정을 통하는 것이 정석이나, 수치 기록용)
-		// GCC->SetInternalStrain(DestructionData->InternalStrain);
 	}
 }
 

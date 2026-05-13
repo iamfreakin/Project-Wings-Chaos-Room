@@ -12,10 +12,12 @@
 #include "EnhancedInputSubsystems.h"
 #include "Data/WingsInputConfigData.h"
 #include "Data/WingsFlightData.h"
+#include "Data/WingsDestructionData.h"
 #include "Kismet/GameplayStatics.h"
 #include "Field/FieldSystemComponent.h"
 #include "Field/FieldSystemObjects.h"
 #include "Field/FieldSystemTypes.h"
+#include "Environment/WingsDestructibleActor.h"
 #include "ProjectWings/ProjectWings.h"
 
 AWingsPawnBase::AWingsPawnBase()
@@ -27,6 +29,7 @@ AWingsPawnBase::AWingsPawnBase()
 	RootComponent = MeshComponent;
 	MeshComponent->SetSimulatePhysics(true);
 	MeshComponent->SetNotifyRigidBodyCollision(true);
+	MeshComponent->SetMassOverrideInKg(NAME_None, 5000.0f, true);
 
 	MeshComponent->SetLinearDamping(0.5f);
 	MeshComponent->SetAngularDamping(1.0f);
@@ -434,13 +437,36 @@ void AWingsPawnBase::OnMeshHit(UPrimitiveComponent* HitComponent, AActor* OtherA
 {
 	if (CurrentState != EWingsPawnState::Flying) return;
 
-	SetPawnState(EWingsPawnState::Crashed);
-	SpawnDestructionField(Hit.ImpactPoint, Hit.ImpactNormal);
+	float DamageMultiplier = 1.0f;
 
-	UE_LOG(LogWings, Log, TEXT("Pawn Crashed! Impact Speed: %.1f, NormalImpulse: %s"), GetVelocity().Size(), *NormalImpulse.ToString());
+	// 상성 체크: AWingsDestructibleActor인 경우 속성을 비교합니다.
+	if (AWingsDestructibleActor* DestructibleActor = Cast<AWingsDestructibleActor>(OtherActor))
+	{
+		// 1. 속성 상성 체크
+		if (Attribute != DestructibleActor->GetAttribute())
+		{
+			// 상성이 맞지 않으면 극소량(0.1%)의 데미지만 고정 적용 (폭발 배수 미적용)
+			DamageMultiplier = 0.001f; 
+			UE_LOG(LogWings, Warning, TEXT("Attribute Mismatch! Damage Minimized (0.1%%)."));
+		}
+		else
+		{
+			// 2. 상성이 맞을 때만 타겟의 고유 폭발력 배수 반영
+			if (const UWingsDestructionData* Data = DestructibleActor->GetDestructionData())
+			{
+				DamageMultiplier = Data->ExplosionForceMultiplier;
+				UE_LOG(LogWings, Log, TEXT("Attribute Match! Applying Explosion Multiplier: %.1f"), DamageMultiplier);
+			}
+		}
+	}
+
+	SetPawnState(EWingsPawnState::Crashed);
+	SpawnDestructionField(Hit.ImpactPoint, Hit.ImpactNormal, DamageMultiplier);
+
+	UE_LOG(LogWings, Log, TEXT("Pawn Crashed! Impact Speed: %.1f, Final Multiplier: %.4f"), GetVelocity().Size(), DamageMultiplier);
 }
 
-void AWingsPawnBase::SpawnDestructionField(FVector ContactLocation, FVector HitNormal)
+void AWingsPawnBase::SpawnDestructionField(FVector ContactLocation, FVector HitNormal, float DamageMultiplier)
 {
 	if (!FieldSystemComponent || !MeshComponent) return;
 
@@ -454,8 +480,9 @@ void AWingsPawnBase::SpawnDestructionField(FVector ContactLocation, FVector HitN
 	float SpeedAlpha = FMath::Clamp(Speed / 5000.0f, 0.5f, 3.0f);
 	float MassAlpha = FMath::Max(0.1f, Mass / MassRef);
 
-	float FinalRadius = BaseRadius * SpeedAlpha * FMath::Sqrt(MassAlpha);
-	float FinalStrength = BaseStrength * SpeedAlpha * MassAlpha;
+	// 상성 배율 적용: 상성이 안 맞으면 반경도 아주 작게(10%) 축소
+	float FinalRadius = BaseRadius * SpeedAlpha * FMath::Sqrt(MassAlpha) * (DamageMultiplier > 0.01f ? 1.0f : 0.1f);
+	float FinalStrength = BaseStrength * SpeedAlpha * MassAlpha * DamageMultiplier;
 
 	URadialFalloff* StrainFalloff = NewObject<URadialFalloff>(this);
 	StrainFalloff->SetRadialFalloff(FinalStrength, 0.f, FinalStrength, 0.f, FinalRadius, ContactLocation, EFieldFalloffType::Field_FallOff_None);
@@ -473,5 +500,5 @@ void AWingsPawnBase::SpawnDestructionField(FVector ContactLocation, FVector HitN
 
 	FieldSystemComponent->ApplyPhysicsField(true, EFieldPhysicsType::Field_LinearVelocity, nullptr, CullingField);
 
-	UE_LOG(LogWings, Log, TEXT("Shockwave Spawned! Mass: %.1f, Radius: %.1f, Strength: %.1f"), Mass, FinalRadius, FinalStrength);
+	UE_LOG(LogWings, Log, TEXT("Shockwave Spawned! Mass: %.1f, Radius: %.1f, Strength: %.1f, Multiplier: %.2f"), Mass, FinalRadius, FinalStrength, DamageMultiplier);
 }

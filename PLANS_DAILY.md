@@ -398,23 +398,70 @@
 
 ---
 
-## [2주차 15일차] 특수 기체 및 장갑 블록(Strain Threshold) 구현
+## [2주차 15일차] 재질 기반 상성(Affinity) 시스템 구현 (완료)
 
 ### 1. 목표
-- 질량 기반의 파괴 상성 시스템 구현 (Heavy Plane vs Iron Block).
-- 충돌 시 대폭발을 일으키는 특수 기체(Bomb Plane) 로직 추가.
+- 기체와 블록에 3가지 속성(Stone, Wood, Grass)을 부여하여 전략적 상성 관계 구축.
+- 기체와 블록의 속성이 일치할 때만 100% 데미지를 가하고, 불일치 시 1%의 미미한 데미지만 적용.
+- 데이터 기반 설계를 통해 향후 상성 배율 확장이 용이한 구조 마련.
+
+### 2. 영향 범위
+- `ProjectWings/Source/ProjectWings/ProjectWings.h` (Enum 정의)
+- `ProjectWings/Source/ProjectWings/Public/Pawn/WingsPawnBase.h/cpp` (상성 체크 로직)
+- `ProjectWings/Source/ProjectWings/Public/Environment/WingsDestructibleActor.h/cpp` (속성 변수 추가)
 
 ### 3. 상세 단계 (C++ Implementation)
-1. **장갑 블록 설정**: `Geometry Collection`의 `Damage Threshold`를 데이터 기반으로 설정하여 일반 기체 충돌 시 파괴되지 않게 방어.
-2. **Heavy Plane**: `WingsFlightData`에서 질량 배율을 높게 설정하여 장갑 블록의 임계치를 넘도록 튜닝.
-3. **Bomb Plane**: 충돌 시 `AServerFieldSystem`을 활용하여 강력한 `RadialFalloff` 및 `RadialImpulse` 발생.
+1. **Enum 정의**: `ProjectWings.h`에 `EWingsAttribute` (None, Stone, Wood, Grass) 추가.
+2. **멤버 변수 추가**: `AWingsPawnBase` 및 `AWingsDestructibleActor`에 `UPROPERTY`로 `Attribute` 변수 추가.
+3. **데미지 연산 리팩토링**:
+   - `AWingsPawnBase::OnMeshHit`에서 `Cast<AWingsDestructibleActor>`를 통해 상대 속성 확인.
+   - 속성 일치 여부에 따라 `DamageMultiplier` (1.0 or 0.01) 결정.
+   - `SpawnDestructionField`에 배율을 전달하여 필드 강도(`Strength`)와 반경(`Radius`)에 반영.
+
+### 4. Editor Workflow (중요)
+1. **기체 설정**: `BP_WingsPawn` 등의 기체 블루프린트에서 `Attribute` 지정.
+2. **블록 설정**: 맵에 배치된 `BP_Destructible_Cube` 에셋들의 `Attribute`를 재질에 맞게 지정.
+3. **시각화**: 플레이어가 속성을 인지할 수 있도록 머티리얼 또는 색상으로 구분.
+
+### 5. Success Criteria
+- 속성이 일치하는 기체로 충돌 시 블록이 정상적으로 파괴됨.
+- 속성이 다른 기체로 충돌 시 블록에 아주 미세한 균열만 생기거나 파괴되지 않음.
+
+### 6. 검증 방법
+- PIE 실행 후 속성별 기체/블록 충돌 테스트 및 로그(`LogWings`) 확인.
 
 ---
 
-## [2주차 16일차] 전체 스테이지(1~4) 밸런싱 및 폴리싱 (Death Cam 포함)
+## [2주차 16일차] 전체 스테이지(1~4) 밸런싱 및 폴리싱 (완료)
 
 ### 1. 목표
 - Stage 1~4의 물리 수치 및 난이도 밸런싱.
-- 충돌 시 충돌 지점을 분석할 수 있는 '고급 사망 카메라' 최종 적용.
+- 사용자가 제공한 구체적인 물리 변수값(DA_Stone_Wall, DA_WingsFlight_Default) 적용.
+- 기체 질량(5000kg) 및 상성 데미지 배율 정규화.
 - 전체 게임 루프(Start -> Stage 1~4 -> Success/Fail) 폴리싱.
+
+### 2. 영향 범위
+- `UWingsFlightData.h`, `UWingsDestructionData.h`, `AWingsPawnBase.cpp`
+- `Content/Data/DA_Stone_Wall.uasset`, `Content/Data/DA_WingsFlight_Default.uasset`
+
+### 3. 상세 단계 (C++ Implementation)
+1. **Flight Data 업데이트**: `UWingsFlightData`의 기본값들을 사용자의 밸런싱 시트에 맞춰 대폭 수정 (Pitch/Yaw 감도 하향, FOV 범위 확대 등).
+2. **Destruction Data 업데이트**: `UWingsDestructionData`의 `DamageThreshold`를 5,000만, `InternalStrain`을 1,000으로 상향하여 묵직한 파괴감 유도.
+3. **기체 물리 설정**: `AWingsPawnBase` 생성자에서 `MeshComponent`의 질량을 **5000.0kg**으로 고정하여 충돌 위력 강화.
+4. **상성 배율 수정**: 상성 불일치 시 데미지를 기존 0.1%에서 **1% (0.01f)**로 상향 조정하여 최소한의 피드백 제공.
+
+### 4. Editor Workflow (중요)
+1. **데이터 에셋 확인**: `DA_Stone_Wall` 및 `DA_WingsFlight_Default` 에셋을 열어 변경된 기본값이 정상적으로 반영되었는지 확인.
+2. **스테이지 배치**: 맵 1~4에 배치된 각 블록들의 `Destruction Data` 슬롯에 `DA_Stone_Wall`이 할당되어 있는지 확인.
+3. **질량 확인**: `BP_WingsPawn`의 디테일 패널에서 `Mass in Kg`가 5000으로 표시되는지 확인.
+
+### 5. Success Criteria
+- 기체 조작이 이전보다 묵직하고 정밀하게 느껴짐 (Yaw 0.03, Pitch 0.05).
+- 속도가 빨라짐에 따라 FOV가 90에서 110까지 자연스럽게 확장됨.
+- 질량 5톤의 위력으로 인해 돌 벽 충돌 시 강력한 충격파와 파괴 연출이 발생함.
+- 상성이 맞지 않는 블록은 거의 부서지지 않음.
+
+### 6. 검증 방법
+- PIE 실행 후 각 스테이지별 비행 조작감 및 파괴 위력 수동 확인.
+- 로그(`LogWings`)를 통해 실제 적용된 Mass와 Strength 값 모니터링.
 

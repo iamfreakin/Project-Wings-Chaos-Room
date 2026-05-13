@@ -37,7 +37,7 @@ public:
 
 	/** 자동 수평 복원 속도 */
 	UPROPERTY(EditAnywhere, Category = "Flight|Physics", meta = (ToolTip = "조작이 없을 때 기체를 수평 상태로 되돌리는 속도입니다."))
-	float AutoLevelingSpeed = 1.5f;
+	float AutoLevelingSpeed = 0.5f;
 
 	/** 뱅크-투-턴 강도 (기울기에 따른 자동 선회) */
 	UPROPERTY(EditAnywhere, Category = "Flight|Physics", meta = (ToolTip = "기체가 옆으로 기울어졌을 때 자동으로 선회(Yaw) 토크를 부여하는 정도입니다."))
@@ -113,7 +113,7 @@ public:
 
 	/** 파괴력 계산 시 기준이 되는 질량 */
 	UPROPERTY(EditAnywhere, Category = "Flight|Destruction", meta = (ToolTip = "파괴력(강도/반경) 계산 시 기준이 되는 질량입니다. 실제 질량이 이보다 크면 파괴력이 증폭됩니다."))
-	float DestructionMassReference = 100.0f;
+	float DestructionMassReference = 5000.0f;
 
 	/** 사망 카메라 거리 */
 	UPROPERTY(EditAnywhere, Category = "Flight|Camera|Death", meta = (ToolTip = "충돌 후 카메라가 기체로부터 멀어질 목표 거리입니다."))

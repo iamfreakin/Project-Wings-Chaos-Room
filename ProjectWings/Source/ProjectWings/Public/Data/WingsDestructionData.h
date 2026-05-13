@@ -18,11 +18,11 @@ class PROJECTWINGS_API UWingsDestructionData : public UPrimaryDataAsset
 public:
 	/** 파괴가 시작되는 최소 충격 강도 (Damage Threshold) */
 	UPROPERTY(EditAnywhere, Category = "Destruction|Physics", meta = (ClampMin = "0.0"))
-	float DamageThreshold = 5000.0f;
+	float DamageThreshold = 500000000.0f;
 
 	/** 조각들 사이의 결합력 (Internal Strain) - 높을수록 잘 안부서짐 */
 	UPROPERTY(EditAnywhere, Category = "Destruction|Physics", meta = (ClampMin = "0.0"))
-	float InternalStrain = 100.0f;
+	float InternalStrain = 50000.0f;
 
 	/** 파편이 유지되는 시간 (초). 이후에는 사라지도록 설정 가능 */
 	UPROPERTY(EditAnywhere, Category = "Destruction|Optimization", meta = (ClampMin = "0.0"))
@@ -30,7 +30,7 @@ public:
 
 	/** 파괴 시 파편이 튀어나가는 힘의 배율 */
 	UPROPERTY(EditAnywhere, Category = "Destruction|Visual", meta = (ClampMin = "0.0"))
-	float ExplosionForceMultiplier = 1.0f;
+	float ExplosionForceMultiplier = 10.0f;
 
 	/** 충돌 시 데미지를 발생시킬지 여부 */
 	UPROPERTY(EditAnywhere, Category = "Destruction|ChainReaction")
@@ -38,7 +38,7 @@ public:
 
 	/** 파괴 발생 시 주변으로 충격을 전파할지 여부 */
 	UPROPERTY(EditAnywhere, Category = "Destruction|ChainReaction")
-	bool bEnablePropagation = false;
+	bool bEnablePropagation = true;
 
 	/** 파괴 전파 반지름 */
 	UPROPERTY(EditAnywhere, Category = "Destruction|ChainReaction", meta = (EditCondition = "bEnablePropagation", ClampMin = "0.0"))
@@ -46,7 +46,7 @@ public:
 
 	/** 전파되는 파괴 강도 (Internal Strain에 대응) */
 	UPROPERTY(EditAnywhere, Category = "Destruction|ChainReaction", meta = (EditCondition = "bEnablePropagation", ClampMin = "0.0"))
-	float PropagationStrength = 500.0f;
+	float PropagationStrength = 5000.0f;
 
 	/** 이 물체의 재질 태그 (예: Destruction.Material.Stone) */
 	UPROPERTY(EditAnywhere, Category = "Destruction|Tags")

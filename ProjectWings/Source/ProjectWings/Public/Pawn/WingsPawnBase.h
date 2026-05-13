@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
+#include "ProjectWings/ProjectWings.h"
 #include "WingsPawnBase.generated.h"
 
 class UStaticMeshComponent;
@@ -67,6 +68,10 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Wings|State")
 	EWingsPawnState CurrentState;
 
+	/** 기체의 재질 속성 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Wings|Stats")
+	EWingsAttribute Attribute = EWingsAttribute::None;
+
 	/** 자유 시점 활성화 여부 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Wings|State")
 	bool bIsFreeLooking;
@@ -128,7 +133,7 @@ protected:
 	void OnMeshHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
 
 	/** 충돌 지점에 물리적 충격파(Strain/Force)를 발산합니다. */
-	void SpawnDestructionField(FVector ContactLocation, FVector HitNormal);
+	void SpawnDestructionField(FVector ContactLocation, FVector HitNormal, float DamageMultiplier = 1.0f);
 
 public:
 	/** 컴포넌트 게터 */
