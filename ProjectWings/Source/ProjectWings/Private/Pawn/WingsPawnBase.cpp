@@ -59,16 +59,6 @@ AWingsPawnBase::AWingsPawnBase()
 	bEnableAutoLeveling = true;
 	CurrentThrust = 0.0f;
 
-	// 카메라 동적 효과 기본값 (Data Asset 미설정 시 대비)
-	CameraLagSpeed = 10.0f;
-	CameraRotationLagSpeed = 8.0f;
-	MinFOV = 90.0f;
-	MaxFOV = 110.0f;
-	MinArmLength = 800.0f;
-	MaxArmLength = 1000.0f;
-	DynamicCameraSpeedThreshold = 5000.0f;
-	FreeLookSensitivity = 0.5f;
-
 	// 연료 관련 기본값 설정
 	MaxFuel = 100.0f;
 	CurrentFuel = 100.0f;
@@ -87,6 +77,14 @@ void AWingsPawnBase::BeginPlay()
 	Super::BeginPlay();
 
 	CurrentFuel = MaxFuel;
+
+	// 데이터 에셋 기반 카메라 초기 설정
+	if (FlightData && SpringArmComponent)
+	{
+		SpringArmComponent->CameraLagSpeed = FlightData->CameraLagSpeed;
+		SpringArmComponent->CameraRotationLagSpeed = FlightData->CameraRotationLagSpeed;
+		SpringArmComponent->TargetArmLength = FlightData->MinArmLength;
+	}
 
 	if (EngineTrailComponent)
 	{
@@ -162,11 +160,9 @@ void AWingsPawnBase::Tick(float DeltaTime)
 
 		if (Speed > 100.f)
 		{
-			// 현재 속도 벡터를 기체 정면 방향으로 부드럽게 회전시킴
 			FVector TargetVelocity = GetActorForwardVector() * Speed;
 			FVector NewVelocity = FMath::VInterpTo(CurrentVelocity, TargetVelocity, DeltaTime, AlignSpeed);
 			
-			// 중요: 벡터의 방향만 취하고 원래의 속력(Magnitude)을 유지하여 에너지 손실 방지
 			if (!NewVelocity.IsNearlyZero())
 			{
 				NewVelocity = NewVelocity.GetSafeNormal() * Speed;
@@ -209,10 +205,7 @@ void AWingsPawnBase::Tick(float DeltaTime)
 			MeshComponent->AddForce(GetActorForwardVector() * CurrentThrust, NAME_None, true);
 		}
 
-		// Fake Lift: 속도에 비례하여 중력의 일부 상쇄 (부유감 개선)
 		float LiftMultiplier = FlightData ? FlightData->LiftForceMultiplier : 0.1f;
-		
-		// 연료 고갈 시에는 양력을 90% 제거하여 묵직한 다이빙 유도
 		if (CurrentFuel <= 0.f) LiftMultiplier *= 0.1f;
 
 		if (Speed > 500.f)
@@ -222,16 +215,22 @@ void AWingsPawnBase::Tick(float DeltaTime)
 		}
 
 		// 5. Dynamic Camera (FOV & Distance)
-		float SpeedAlpha = FMath::Clamp(Speed / DynamicCameraSpeedThreshold, 0.f, 1.f);
+		float DynamicThreshold = FlightData ? FlightData->DynamicCameraSpeedThreshold : 5000.0f;
+		float SpeedAlpha = FMath::Clamp(Speed / DynamicThreshold, 0.f, 1.f);
 		float InterpSpeed = FlightData ? FlightData->DynamicCameraInterpSpeed : 2.0f;
 
-		float TargetFOV = FMath::Lerp(MinFOV, MaxFOV, SpeedAlpha);
-		float TargetArmLength = FMath::Lerp(MinArmLength, MaxArmLength, SpeedAlpha);
+		float LocalMinFOV = FlightData ? FlightData->MinFOV : 90.0f;
+		float LocalMaxFOV = FlightData ? FlightData->MaxFOV : 110.0f;
+		float LocalMinArm = FlightData ? FlightData->MinArmLength : 800.0f;
+		float LocalMaxArm = FlightData ? FlightData->MaxArmLength : 1200.0f;
+
+		float TargetFOV = FMath::Lerp(LocalMinFOV, LocalMaxFOV, SpeedAlpha);
+		float TargetArmLength = FMath::Lerp(LocalMinArm, LocalMaxArm, SpeedAlpha);
 
 		CameraComponent->SetFieldOfView(FMath::FInterpTo(CameraComponent->FieldOfView, TargetFOV, DeltaTime, InterpSpeed));
 		SpringArmComponent->TargetArmLength = FMath::FInterpTo(SpringArmComponent->TargetArmLength, TargetArmLength, DeltaTime, InterpSpeed);
 
-		// 6. Free Look Smooth Return (Quaternion Interp)
+		// 6. Free Look Smooth Return
 		if (!bIsFreeLooking)
 		{
 			FRotator CurrentRelativeRot = SpringArmComponent->GetRelativeRotation();
@@ -241,6 +240,26 @@ void AWingsPawnBase::Tick(float DeltaTime)
 				FRotator NewRelativeRot = FMath::RInterpTo(CurrentRelativeRot, FRotator::ZeroRotator, DeltaTime, ReturnSpeed);
 				SpringArmComponent->SetRelativeRotation(NewRelativeRot);
 			}
+		}
+	}
+	else if (CurrentState == EWingsPawnState::Crashed)
+	{
+		// 사망 카메라 (Death Cam) 보간: 충돌 후 서서히 뒤로 빠지며 위에서 아래를 조망하는 구도로 전환
+		if (FlightData)
+		{
+			float DeathInterpSpeed = FlightData->DeathCamInterpSpeed;
+			float LocalMaxFOV = FlightData->MaxFOV;
+			
+			// 1. 카메라 거리 보간: 기체로부터 설정된 거리(DeathCamDistance)만큼 부드럽게 뒤로 물러남
+			SpringArmComponent->TargetArmLength = FMath::FInterpTo(SpringArmComponent->TargetArmLength, FlightData->DeathCamDistance, DeltaTime, DeathInterpSpeed);
+			
+			// 2. 높이 오프셋 보간: 기체 바로 위가 아닌, 약간 위쪽(DeathCamHeight)에서 내려다보는 구도 형성
+			FVector CurrentOffset = SpringArmComponent->SocketOffset;
+			FVector TargetOffset = FVector(0.0f, 0.0f, FlightData->DeathCamHeight);
+			SpringArmComponent->SocketOffset = FMath::VInterpTo(CurrentOffset, TargetOffset, DeltaTime, DeathInterpSpeed);
+
+			// 3. 시야각(FOV) 확장: 충격 현장을 더 넓게 볼 수 있도록 최대 FOV로 부드럽게 전환
+			CameraComponent->SetFieldOfView(FMath::FInterpTo(CameraComponent->FieldOfView, LocalMaxFOV, DeltaTime, DeathInterpSpeed));
 		}
 	}
 }
@@ -277,34 +296,65 @@ void AWingsPawnBase::SetPawnState(EWingsPawnState NewState)
 
 	case EWingsPawnState::Crashed:
 		if (EngineTrailComponent) EngineTrailComponent->Deactivate();
+
+		// [사망 카메라 핵심 설정] 충돌 직후 기체가 회전하더라도 카메라 화면은 수평과 안정을 유지하게 함
+		if (SpringArmComponent)
+		{
+			// 1. 회전 상속 해제: 기체의 Pitch, Yaw, Roll 회전이 스프링 암(카메라)에 전달되지 않도록 차단 (멀미 방지)
+			SpringArmComponent->bInheritPitch = false;
+			SpringArmComponent->bInheritYaw = false;
+			SpringArmComponent->bInheritRoll = false;
+
+			// 2. 절대 회전 사용: 기체가 월드상에서 뒤집혀도 카메라는 월드 좌표계의 수평을 유지하도록 설정
+			SpringArmComponent->SetUsingAbsoluteRotation(true);
+
+			// 3. 초기 시선 고정: 충돌 시점의 방향을 유지하되, 약간 아래(-20도)를 내려다보는 안정적인 각도로 월드 회전값 강제 설정
+			FRotator CurrentRot = SpringArmComponent->GetComponentRotation();
+			CurrentRot.Pitch = -20.0f; 
+			SpringArmComponent->SetWorldRotation(CurrentRot);
+		}
 		break;
 	}
 }
 
 void AWingsPawnBase::Input_FlightMouse(const FInputActionValue& Value)
 {
-	if (CurrentState != EWingsPawnState::Flying) return;
-
 	FVector2D LookAxisVector = Value.Get<FVector2D>();
+	float FreeLookSens = FlightData ? FlightData->FreeLookSensitivity : 0.5f;
 
-	if (bIsFreeLooking)
+	if (CurrentState == EWingsPawnState::Flying)
 	{
-		FRotator NewRotation = SpringArmComponent->GetRelativeRotation();
-		NewRotation.Pitch = FMath::Clamp(NewRotation.Pitch + (LookAxisVector.Y * FreeLookSensitivity), -80.f, 80.f);
-		NewRotation.Yaw += (LookAxisVector.X * FreeLookSensitivity);
-		SpringArmComponent->SetRelativeRotation(NewRotation);
+		if (bIsFreeLooking)
+		{
+			FRotator NewRotation = SpringArmComponent->GetRelativeRotation();
+			NewRotation.Pitch = FMath::Clamp(NewRotation.Pitch + (LookAxisVector.Y * FreeLookSens), -80.f, 80.f);
+			NewRotation.Yaw += (LookAxisVector.X * FreeLookSens);
+			SpringArmComponent->SetRelativeRotation(NewRotation);
+		}
+		else
+		{
+			float PitchSens = FlightData ? FlightData->PitchSensitivity : 1.0f;
+			float YawSens = FlightData ? FlightData->YawSensitivity : 1.0f;
+
+			float PitchTorque = LookAxisVector.Y * PitchSens * 25.f;
+			float YawTorque = LookAxisVector.X * YawSens * 15.f;
+
+			MeshComponent->AddTorqueInRadians(GetActorRightVector() * PitchTorque, NAME_None, true);
+			MeshComponent->AddTorqueInRadians(GetActorUpVector() * YawTorque, NAME_None, true);
+		}
 	}
-	else
+	else if (CurrentState == EWingsPawnState::Crashed)
 	{
-		// 코드 내 감도 곱셈 제거 (IMC Modifier 활용 권장)
-		float PitchSens = FlightData ? FlightData->PitchSensitivity : 1.0f;
-		float YawSens = FlightData ? FlightData->YawSensitivity : 1.0f;
-
-		float PitchTorque = LookAxisVector.Y * PitchSens * 25.f;
-		float YawTorque = LookAxisVector.X * YawSens * 15.f;
-
-		MeshComponent->AddTorqueInRadians(GetActorRightVector() * PitchTorque, NAME_None, true);
-		MeshComponent->AddTorqueInRadians(GetActorUpVector() * YawTorque, NAME_None, true);
+		// [사망 카메라 자유 회전] 충돌 상태에서 마우스 이동 시 기체 주위를 공전(Orbit)함
+		if (SpringArmComponent)
+		{
+			FRotator NewRotation = SpringArmComponent->GetComponentRotation();
+			NewRotation.Yaw += (LookAxisVector.X * FreeLookSens);
+			// 바닥을 뚫지 않도록 Pitch 제한 (-80도 ~ 20도)
+			NewRotation.Pitch = FMath::Clamp(NewRotation.Pitch + (LookAxisVector.Y * FreeLookSens), -80.f, 20.f);
+			
+			SpringArmComponent->SetWorldRotation(NewRotation);
+		}
 	}
 }
 
@@ -358,10 +408,7 @@ void AWingsPawnBase::OnMeshHit(UPrimitiveComponent* HitComponent, AActor* OtherA
 {
 	if (CurrentState != EWingsPawnState::Flying) return;
 
-	// 충돌 시 상태 전환 (추락)
 	SetPawnState(EWingsPawnState::Crashed);
-
-	// 충격파 생성
 	SpawnDestructionField(Hit.ImpactPoint, Hit.ImpactNormal);
 
 	UE_LOG(LogWings, Log, TEXT("Pawn Crashed! Impact Speed: %.1f, NormalImpulse: %s"), GetVelocity().Size(), *NormalImpulse.ToString());
@@ -378,23 +425,17 @@ void AWingsPawnBase::SpawnDestructionField(FVector ContactLocation, FVector HitN
 	float BaseStrength = FlightData ? FlightData->DestructionFieldStrength : 1000000.0f;
 	float MassRef = FlightData ? FlightData->DestructionMassReference : 100.0f;
 
-	// 1. 속도에 따른 배율 (최소 0.5배, 최대 3배)
 	float SpeedAlpha = FMath::Clamp(Speed / 5000.0f, 0.5f, 3.0f);
-	
-	// 2. 질량에 따른 배율 (기준 질량 대비 비율)
 	float MassAlpha = FMath::Max(0.1f, Mass / MassRef);
 
-	// 최종 반경 및 강도 (속도와 질량을 모두 반영)
-	float FinalRadius = BaseRadius * SpeedAlpha * FMath::Sqrt(MassAlpha); // 반경은 면적/부피 개념이므로 제곱근 적용이 자연스러움
+	float FinalRadius = BaseRadius * SpeedAlpha * FMath::Sqrt(MassAlpha);
 	float FinalStrength = BaseStrength * SpeedAlpha * MassAlpha;
 
-	// 1. Strain Field: 구조적 파괴 (Geometry Collection 파편화)
 	URadialFalloff* StrainFalloff = NewObject<URadialFalloff>(this);
 	StrainFalloff->SetRadialFalloff(FinalStrength, 0.f, FinalStrength, 0.f, FinalRadius, ContactLocation, EFieldFalloffType::Field_FallOff_None);
 	
 	FieldSystemComponent->ApplyPhysicsField(true, EFieldPhysicsType::Field_ExternalClusterStrain, nullptr, StrainFalloff);
 
-	// 2. Linear Velocity Field: 파편 밀어내기
 	URadialVector* RadialVector = NewObject<URadialVector>(this);
 	RadialVector->SetRadialVector(FinalStrength, ContactLocation); 
 

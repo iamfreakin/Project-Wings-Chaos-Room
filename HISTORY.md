@@ -172,3 +172,21 @@
 
 ### Improved
 - **레이아웃 최적화**: 사용되지 않는 UI 요소에 대한 `Collapsed` 처리를 통해 렌더링 성능 최적화 및 UX 개선.
+
+## [2026-05-13] 데이터 에셋 기반 스펙 관리 및 고급 사망 카메라(Death Cam) 구현
+
+### Added
+- **데이터 에셋(`UWingsFlightData`) 고도화**:
+  - `Min/MaxFOV`, `ArmLength`, `CameraLag` 등 모든 카메라 변수를 에셋화하여 런타임 튜닝 지원.
+  - 사망 카메라 전용 수치(`DeathCamDistance`, `DeathCamHeight`, `InterpSpeed`) 추가.
+- **고급 사망 카메라(Death Cam) 시스템**:
+  - 충돌 시 `SpringArm`의 회전 상속(`Inherit Pitch/Yaw/Roll`)을 즉시 해제하고 월드 절대 회전 모드(`SetUsingAbsoluteRotation`)로 전환.
+  - 충돌 지점에서 부드럽게 뒤로 물러나며(Back & Up) 파괴 현장을 관찰할 수 있는 시점 보간 로직 구현.
+
+### Refactored
+- **Data-Driven Architecture**: `AWingsPawnBase`에 하드코딩된 물리/카메라 상수를 제거하고 `UWingsFlightData` 참조 방식으로 일원화.
+- **코드 경량화**: Pawn 클래스의 멤버 변수를 줄이고 데이터 에셋을 통한 중앙 관리 체계 확립.
+
+### Improved
+- **UX/멀미 방지**: 기체가 추락하며 뒤집힐 때 카메라가 함께 돌지 않도록 개선하여 시각적 안정성 확보.
+- **파괴 연출 조망**: 충돌 후 카메라가 자동으로 넓은 시야를 확보하여 연쇄 파괴 효과를 더 잘 감상할 수 있게 개선.

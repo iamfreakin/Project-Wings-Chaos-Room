@@ -71,6 +71,38 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Flight|Camera", meta = (ToolTip = "자유 시점 해제 시 카메라가 원래 위치(정후방)로 돌아오는 속도입니다."))
 	float CameraReturnSpeed = 5.0f;
 
+	/** 최소 시야각 (정지/저속 시) */
+	UPROPERTY(EditAnywhere, Category = "Flight|Camera", meta = (ToolTip = "최저 속도일 때의 기본 FOV입니다."))
+	float MinFOV = 90.0f;
+
+	/** 최대 시야각 (최고 속도 시) */
+	UPROPERTY(EditAnywhere, Category = "Flight|Camera", meta = (ToolTip = "최고 속도일 때의 확장된 FOV입니다."))
+	float MaxFOV = 110.0f;
+
+	/** 최소 카메라 거리 (정지/저속 시) */
+	UPROPERTY(EditAnywhere, Category = "Flight|Camera", meta = (ToolTip = "최저 속도일 때의 카메라와 기체 사이의 거리입니다."))
+	float MinArmLength = 800.0f;
+
+	/** 최대 카메라 거리 (최고 속도 시) */
+	UPROPERTY(EditAnywhere, Category = "Flight|Camera", meta = (ToolTip = "최고 속도일 때의 카메라와 기체 사이의 거리입니다."))
+	float MaxArmLength = 1200.0f;
+
+	/** 카메라 효과가 최대로 적용되는 속도 임계값 */
+	UPROPERTY(EditAnywhere, Category = "Flight|Camera", meta = (ToolTip = "이 속도에 도달했을 때 최대 FOV와 최대 거리가 적용됩니다."))
+	float DynamicCameraSpeedThreshold = 5000.0f;
+
+	/** 카메라 위치 지연(Lag) 속도 */
+	UPROPERTY(EditAnywhere, Category = "Flight|Camera", meta = (ToolTip = "카메라가 기체의 위치 변화를 뒤따라가는 속도입니다. 수치가 낮을수록 부드럽게 지연됩니다."))
+	float CameraLagSpeed = 10.0f;
+
+	/** 카메라 회전 지연(Rotation Lag) 속도 */
+	UPROPERTY(EditAnywhere, Category = "Flight|Camera", meta = (ToolTip = "카메라가 기체의 회전 변화를 뒤따라가는 속도입니다."))
+	float CameraRotationLagSpeed = 8.0f;
+
+	/** 자유 시점 회전 감도 */
+	UPROPERTY(EditAnywhere, Category = "Flight|Camera", meta = (ToolTip = "자유 시점 모드에서 마우스 이동에 따른 카메라 회전 감도입니다."))
+	float FreeLookSensitivity = 0.5f;
+
 	/** 충격파 파괴 범위 */
 	UPROPERTY(EditAnywhere, Category = "Flight|Destruction", meta = (ToolTip = "충돌 시 발생하는 충격파의 반지름입니다."))
 	float DestructionFieldRadius = 500.0f;
@@ -82,4 +114,16 @@ public:
 	/** 파괴력 계산 시 기준이 되는 질량 */
 	UPROPERTY(EditAnywhere, Category = "Flight|Destruction", meta = (ToolTip = "파괴력(강도/반경) 계산 시 기준이 되는 질량입니다. 실제 질량이 이보다 크면 파괴력이 증폭됩니다."))
 	float DestructionMassReference = 100.0f;
+
+	/** 사망 카메라 거리 */
+	UPROPERTY(EditAnywhere, Category = "Flight|Camera|Death", meta = (ToolTip = "충돌 후 카메라가 기체로부터 멀어질 목표 거리입니다."))
+	float DeathCamDistance = 2500.0f;
+
+	/** 사망 카메라 높이 (Z 오프셋) */
+	UPROPERTY(EditAnywhere, Category = "Flight|Camera|Death", meta = (ToolTip = "충돌 후 카메라가 위치할 높이 오프셋입니다."))
+	float DeathCamHeight = 500.0f;
+
+	/** 사망 카메라 보간 속도 */
+	UPROPERTY(EditAnywhere, Category = "Flight|Camera|Death", meta = (ToolTip = "충돌 후 사망 카메라 구도로 전환되는 속도입니다."))
+	float DeathCamInterpSpeed = 2.0f;
 };

@@ -91,38 +91,6 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Wings|Stats|Flight")
 	float CurrentThrust;
 
-	/** 카메라 지연(Lag) 속도 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Stats|Camera")
-	float CameraLagSpeed;
-
-	/** 카메라 회전 지연(Rotation Lag) 속도 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Stats|Camera")
-	float CameraRotationLagSpeed;
-
-	/** 최소 시야각 (정지/저속 시) */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Stats|Camera")
-	float MinFOV;
-
-	/** 최대 시야각 (최고 속도 시) */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Stats|Camera")
-	float MaxFOV;
-
-	/** 최소 카메라 거리 (정지/저속 시) */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Stats|Camera")
-	float MinArmLength;
-
-	/** 최대 카메라 거리 (최고 속도 시) */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Stats|Camera")
-	float MaxArmLength;
-
-	/** 카메라 효과가 최대로 적용되는 속도 임계값 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Stats|Camera")
-	float DynamicCameraSpeedThreshold;
-
-	/** 자유 시점 회전 감도 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Stats|Camera")
-	float FreeLookSensitivity;
-
 	/** 최대 연료량 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wings|Stats|Fuel")
 	float MaxFuel;

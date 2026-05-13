@@ -331,7 +331,7 @@
 ### 1. 목표
 - 인게임 HUD UI 프레임워크(`WingsUserWidget`) 구축.
 - 게임 상태(`Ready`, `Flying`)에 따른 동적 UI 가시성 전환.
-- 속도 및 연료 잔량 실시간 데이터 바인딩 및 컬러 피드백 구현.
+- 속도 및 연료 실시간 데이터 바인딩 및 컬러 피드백 구현.
 
 ### 2. 영향 범위
 - `ProjectWings/Source/ProjectWings/Public/UI/WingsUserWidget.h/cpp`
@@ -353,3 +353,37 @@
 
 ### 6. 검증 방법
 - PIE 실행 후 상태 변화에 따른 UI 가시성 및 데이터 업데이트 확인.
+
+---
+
+## [2주차 13일차] 데이터 에셋 기반 스펙 관리 및 고급 사망 카메라(Death Cam) 구현
+
+### 1. 목표
+- 기체의 모든 비행 물리 및 카메라 수치를 `UWingsFlightData` 에셋으로 완전히 이전하여 관리 편의성 증대.
+- 충돌 시 기체의 회전으로부터 카메라를 해제하고, 충돌 지점을 조망할 수 있는 **'관찰 시점'**으로 부드럽게 전환하는 기능 구현.
+
+### 2. 영향 범위
+- `ProjectWings/Source/ProjectWings/Public/Data/WingsFlightData.h`
+- `ProjectWings/Source/ProjectWings/Public/Pawn/WingsPawnBase.h`
+- `ProjectWings/Source/ProjectWings/Private/Pawn/WingsPawnBase.cpp`
+
+### 3. 상세 단계 (C++ Implementation)
+1. **데이터 에셋 확장 (`UWingsFlightData`)**: `DeathCamDistance`, `DeathCamHeight`, `DeathCamInterpSpeed` 등 카메라 제어 변수 추가.
+2. **사망 카메라 로직 구현**:
+   - `SetPawnState(Crashed)` 시 `SpringArm`의 회전 상속(`bInheritPitch/Yaw/Roll`)을 해제.
+   - `SpringArm->bAbsoluteRotation = true`를 통해 기체가 뒤집혀도 카메라는 수평을 유지하도록 설정.
+3. **카메라 보간 (`Tick`)**: `Crashed` 상태에서 `TargetArmLength`와 `SocketOffset`을 부드럽게 변경하여 기체를 멀리서 내려다보는 구도 형성.
+4. **리팩토링**: `WingsPawnBase` 내 하드코딩된 수치들을 데이터 에셋 참조 방식으로 전환.
+
+### 4. Editor Workflow (중요)
+1. **데이터 에셋 업데이트**: `DA_WingsFlight_Default`에서 새로 추가된 `Death Cam` 수치 조정 및 기존 물리 수치 검토.
+2. **블루프린트 확인**: `BP_WingsPawn`에서 `FlightData` 할당 여부 확인.
+
+### 5. Success Criteria
+- 충돌 후 기체가 회전해도 카메라는 흔들리지 않고 수평을 유지함.
+- 카메라가 기체로부터 부드럽게 멀어지며 주변 파괴 환경을 한눈에 보여줌.
+- 모든 비행/카메라 수치를 데이터 에셋에서 즉시 수정 가능함.
+
+### 6. 검증 방법
+- PIE 실행 후 충돌 테스트 및 데이터 에셋 수치 실시간 튜닝 확인.
+
