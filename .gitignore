@@ -45,3 +45,7 @@ Thumbs.db
 # *.uproject    ← 프로젝트 파일
 # Docs/         ← 교재 등 문서
 # =============================================================================
+
+# 외부 에셋팩 (VRS Low Poly Nature)
+ProjectWings/Content/VRS_LowPolyNature/
+ProjectWings/LowPolyNature_511.png
