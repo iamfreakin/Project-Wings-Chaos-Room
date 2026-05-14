@@ -3,6 +3,8 @@
 
 #include "Environment/WingsDestructibleActor.h"
 #include "GeometryCollection/GeometryCollectionComponent.h"
+#include "GeometryCollection/GeometryCollectionObject.h"
+#include "GeometryCollection/GeometryCollectionSimulationTypes.h"
 #include "Data/WingsDestructionData.h"
 #include "Core/WingsGameMode.h"
 
@@ -13,6 +15,7 @@ AWingsDestructibleActor::AWingsDestructibleActor()
 	{
 		GCC->SetGenerateOverlapEvents(true);
 		GCC->SetNotifyRigidBodyCollision(true);
+		GCC->SetSimulatePhysics(true); // 기본적으로 물리 시뮬레이션 활성화
 		
 		// 기본적으로 내비게이션에 영향을 주지 않도록 설정 (성능)
 		GCC->SetCanEverAffectNavigation(false);
@@ -41,16 +44,27 @@ void AWingsDestructibleActor::ApplyDestructionData()
 		// 파괴 이벤트 알림 활성화 (연쇄 파괴 로직 구동용)
 		GCC->SetNotifyBreaks(true);
 
-		// [추가] 초기 가시성 및 물리 안정성 확보를 위한 설정
-		GCC->SetSimulatePhysics(true);
-		GCC->SetEnableGravity(true);
-		
-		// 초기 상태를 정적(Static)으로 설정하여 충격 전까지 고정
-		// UE 5.6 규격에 맞게 SetObjectState 사용
-		// GCC->SetObjectState(Chaos::EObjectStateType::Static); // 필요시 주석 해제하여 사용
-		
-		// 렌더링 상태 강제 갱신 유도
-		GCC->MarkRenderStateDirty();
+		// 파편 자동 제거 설정 (Optimization)
+		// 5.3+ 버전에서는 RemovalSettings가 에셋(RestCollection)으로 이동되었습니다.
+		// 런타임에 에셋의 값을 수정하려면 FGeometryCollectionEdit을 통해 접근해야 합니다.
+		// [최적화] 이미 설정이 되어 있다면 불필요한 에디트를 건너뛰어 물리 불안정 방지
+		if (const UGeometryCollection* RestCollectionAsset = GCC->GetRestCollection())
+		{
+			if (!RestCollectionAsset->bRemoveOnMaxSleep)
+			{
+				FGeometryCollectionEdit GCEdit = GCC->EditRestCollection(GeometryCollection::EEditUpdate::RestPhysicsDynamic);
+				if (UGeometryCollection* RestCollection = GCEdit.GetRestCollection())
+				{
+					RestCollection->bRemoveOnMaxSleep = true;
+					RestCollection->MaximumSleepTime = FVector2D(DestructionData->RemovalDuration, DestructionData->RemovalDuration + 2.0f);
+					RestCollection->RemovalDuration = FVector2D(2.0f, 2.0f); // 사라지는 연출 시간 (Shrink duration)
+					RestCollection->bScaleOnRemoval = true;
+				}
+			}
+		}
+
+		// 컴포넌트 레벨에서 제거 기능 활성화
+		GCC->bAllowRemovalOnSleep = true;
 
 		// 이벤트 바인딩
 		GCC->OnChaosBreakEvent.AddDynamic(this, &AWingsDestructibleActor::OnChaosBreak);
