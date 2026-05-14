@@ -233,16 +233,38 @@
 - **Decoupling**: 위젯이 매 프레임 GameMode의 상태를 묻는 폴링(Polling) 방식에서, 이벤트 발생 시에만 반응하는 브로드캐스트(Broadcast) 방식으로 리팩토링하여 성능 및 구조 개선.
 - **UX**: 게임 종료 시 마우스 커서 활성화 및 입력 모드 전환(`SetInputModeUIOnly`)을 통해 결과 화면 조작 편의성 확보.
 
-## [2026-05-13] 재질 기반 상성(Affinity) 시스템 구현
+## [2026-05-14] 에셋 관리 최적화 및 데이터 기반 재질 시스템 구현
 
 ### Added
-- **속성 시스템(EWingsAttribute)**: Stone(돌), Wood(나무), Grass(풀) 3종 속성 정의.
-- **상성 기반 데미지 로직**:
-  - `AWingsPawnBase::OnMeshHit`에서 충돌 대상과의 속성 일치 여부 체크.
-  - 상성 불일치 시 데미지 배율(DamageMultiplier)을 0.01로 적용하여 파괴 억제.
-  - `SpawnDestructionField`에서 배율에 따른 필드 강도 및 반경 조절 로직 통합.
-- **인터페이스 확장**: `AWingsDestructibleActor`에 속성 게터(`GetAttribute`) 추가.
+- **데이터 기반 재질 할당 시스템**:
+  - `UWingsDestructionData`에 `ExternalMaterial` 및 `InternalMaterial` 프로퍼티 추가.
+  - `AWingsDestructibleActor` 초기화 시 데이터 에셋의 재질을 `GeometryCollection` 슬롯 0, 1에 자동 적용하도록 구현.
+  - 파괴 전/후의 시각적 무결성 확보.
+
+### Fixed
+- **Git 형상 관리 최적화**: `.gitignore`에 대용량 외부 에셋팩(`VRS_LowPolyNature`) 및 관련 바이너리 제외 규칙 추가.
+- **렌더링 버그**: 파괴 전 오브젝트에 머터리얼이 적용되지 않던 현상 해결.
+
+### Technical Details
+- `GeometryCollectionComponent::SetMaterial`을 통한 런타임 재질 교체 로직 적용.
+- `MarkRenderStateDirty`를 호출하여 재질 변경 사항 즉시 반영 보장.
+
+## [2026-05-14] 파편 자동 제거 시스템 구현 및 UE 5.6 빌드 최적화
+
+### Added
+- **파편 자동 제거 시스템 (Fractured Piece Removal)**:
+  - `UWingsDestructionData`의 `RemovalDuration` 수치를 기반으로 파괴된 파편이 일정 시간 후 자동으로 사라지는 기능 구현.
+  - `bScaleOnRemoval` 옵션을 활성화하여 파편이 서서히 작아지며 사라지는 부드러운 연출 적용.
+
+### Fixed
+- **UE 5.6 API 호환성 수정**: 
+  - `UGeometryCollectionComponent::RemovalSettings` 제거에 따른 빌드 오류 해결.
+  - `FGeometryCollectionEdit`을 사용하여 런타임에 에셋(RestCollection) 데이터를 안전하게 수정하도록 개선.
+  - 최신 프로퍼티 명칭(`bRemoveOnMaxSleep`, `MaximumSleepTime` 등) 적용.
+- **물리 충돌 버그**: 
+  - `AWingsDestructibleActor` 생성자에서 `Simulate Physics`를 기본 활성화하여 파괴 전 물체를 통과하는 현상 방지.
 
 ### Improved
-- **데이터 기반 설계**: 하드코딩 없이 각 기체와 블록의 디테일 패널에서 속성을 지정할 수 있도록 `UPROPERTY` 연동.
-- **피드백 강화**: 상성 불일치 시 `LogWings`를 통해 속성 정보를 출력하여 디버깅 편의성 확보.
+- **런타임 성능 최적화**: 파편이 월드에 무한히 남지 않도록 하여 물리 연산 및 렌더링 부하 감소.
+- **데이터 기반 제어**: 각 오브젝트 타입별로 제거 시간을 데이터 에셋에서 개별 설정 가능하도록 연동.
+
