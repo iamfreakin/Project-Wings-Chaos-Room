@@ -29,7 +29,7 @@ AWingsPawnBase::AWingsPawnBase()
 	RootComponent = MeshComponent;
 	MeshComponent->SetSimulatePhysics(true);
 	MeshComponent->SetNotifyRigidBodyCollision(true);
-	MeshComponent->SetMassOverrideInKg(NAME_None, 5000.0f, true);
+	MeshComponent->SetMassOverrideInKg(NAME_None, 200.0f, true); // 5000kg -> 200kg로 대폭 하향
 
 	MeshComponent->SetLinearDamping(0.5f);
 	MeshComponent->SetAngularDamping(1.0f);
@@ -476,7 +476,16 @@ void AWingsPawnBase::OnMeshHit(UPrimitiveComponent* HitComponent, AActor* OtherA
 	}
 
 	SetPawnState(EWingsPawnState::Crashed);
-	SpawnDestructionField(Hit.ImpactPoint, Hit.ImpactNormal, DamageMultiplier);
+
+	// [수정] 상성이 맞지 않으면 파괴 필드(충격파)를 아예 생성하지 않음
+	if (bIsAttributeMatched)
+	{
+		SpawnDestructionField(Hit.ImpactPoint, Hit.ImpactNormal, DamageMultiplier);
+	}
+	else
+	{
+		UE_LOG(LogWings, Warning, TEXT("Destruction Field Blocked due to Attribute Mismatch."));
+	}
 
 	UE_LOG(LogWings, Log, TEXT("Pawn Crashed! Impact Speed: %.1f, Final Multiplier: %.4f"), GetVelocity().Size(), DamageMultiplier);
 }
