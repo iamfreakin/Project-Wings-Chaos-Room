@@ -121,7 +121,7 @@
   - **C++:** 성능이 중요한 핵심 로직, 기본 데이터 구조, 베이스 클래스 정의.
   - **Blueprint:** 비주얼 로직(이펙트, 사운드), 수치 조정, C++ 베이스 클래스 상속 및 구성.
 - **Pawn Choice:** 비행 및 물리 기반 게임이므로 `ACharacter` 대신 `APawn`을 베이스로 하며, Root Component에서 `Simulate Physics`를 통한 직접적인 물리 제어를 수행한다.
-- **World State Management:** 전역 환경 변수(예: 풍향, 중력 배율 등)는 `AGameState` 클래스에서 관리하고, 각 Actor는 이를 참조하여 연산에 반영한다.
+- **Editor-First Configuration:** 컴포넌트의 단순 스위치(예: `bAllowRemovalOnSleep`), 물리 수치(Damping, Friction), 시각적 옵션은 C++ 하드코딩보다 에디터 설정을 우선한다. AI는 설정을 직접 제안하거나 계획서에 포함해야 한다.
 - **Chaos Physics Strategy:** `Geometry Collection` 기반 파괴를 사용하되, 캐주얼한 타격감을 위해 큰 파편 위주의 데미지 판정과 `Field System`을 통한 연쇄 붕괴를 유도한다.
 
 ---
