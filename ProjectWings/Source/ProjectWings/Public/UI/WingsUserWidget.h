@@ -63,6 +63,14 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Wings|UI")
 	FText GetRemainingSpawnsText() const;
 
+	/** 기체 선택 단계 가시성 (시퀀스 미확정 시 Visible) */
+	UFUNCTION(BlueprintPure, Category = "Wings|UI")
+	ESlateVisibility GetSelectionUIVisibility() const;
+
+	/** 현재 선택된 시퀀스의 기체 속성 목록 반환 */
+	UFUNCTION(BlueprintPure, Category = "Wings|UI")
+	TArray<EWingsAttribute> GetSelectedSequence() const;
+
 	/** 현재 재시도 대기 중인지 여부를 반환합니다. (안내 문구 표시용) */
 	UFUNCTION(BlueprintPure, Category = "Wings|UI")
 	bool IsWaitingForRetry() const;

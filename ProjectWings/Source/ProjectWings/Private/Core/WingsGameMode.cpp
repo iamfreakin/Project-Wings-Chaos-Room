@@ -36,6 +36,73 @@ void AWingsGameMode::BeginPlay()
     RemainingTargets = TotalTargets;
 
     UE_LOG(LogWings, Display, TEXT("Stage Initialized. Total Targets: %d"), TotalTargets);
+
+    // 게임 시작 시 기체 선택 단계라면 마우스 커서 표시 및 입력 모드 설정
+    if (!bIsSequenceConfirmed)
+    {
+        if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
+        {
+            FInputModeGameAndUI InputMode;
+            InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+            PC->SetInputMode(InputMode);
+            PC->bShowMouseCursor = true;
+        }
+    }
+}
+
+bool AWingsGameMode::AddAttributeToSequence(EWingsAttribute Attr)
+{
+    if (bIsSequenceConfirmed || IsSequenceFull() || Attr == EWingsAttribute::None)
+    {
+        return false;
+    }
+
+    SelectedSequence.Add(Attr);
+    OnSequenceChanged.Broadcast();
+    return true;
+}
+
+void AWingsGameMode::RemoveAttributeFromSequence(int32 Index)
+{
+    if (bIsSequenceConfirmed || !SelectedSequence.IsValidIndex(Index))
+    {
+        return;
+    }
+
+    SelectedSequence.RemoveAt(Index);
+    OnSequenceChanged.Broadcast();
+}
+
+void AWingsGameMode::ConfirmSequence()
+{
+    if (IsSequenceFull())
+    {
+        bIsSequenceConfirmed = true;
+        
+        // 발사 단계로 전환 시 입력 모드 변경
+        if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
+        {
+            FInputModeGameOnly InputMode;
+            PC->SetInputMode(InputMode);
+            PC->bShowMouseCursor = false;
+        }
+        
+        OnSequenceChanged.Broadcast();
+        UE_LOG(LogWings, Display, TEXT("Aircraft Sequence Confirmed. Launching phase started."));
+    }
+}
+
+TSubclassOf<AWingsPawnBase> AWingsGameMode::GetNextProjectileClass() const
+{
+    if (SelectedSequence.IsValidIndex(CurrentSpawnCount))
+    {
+        EWingsAttribute CurrentAttr = SelectedSequence[CurrentSpawnCount];
+        if (AircraftClassMap.Contains(CurrentAttr))
+        {
+            return AircraftClassMap[CurrentAttr];
+        }
+    }
+    return nullptr;
 }
 
 void AWingsGameMode::OnAircraftLaunched()

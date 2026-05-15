@@ -9,6 +9,9 @@
 /** 게임 상태 변경을 알리는 델리게이트 (승리 여부 전달) */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnGameStateChanged, bool, bIsWin);
 
+/** 기체 시퀀스 변경을 알리는 델리게이트 */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnSequenceChanged);
+
 /**
  * 게임의 전반적인 규칙과 승리 조건을 관리하는 클래스입니다.
  */
@@ -29,9 +32,41 @@ public:
     /** 목표물 파괴 시 호출 */
     void OnTargetDestroyed();
 
+    /** 기체 시퀀스에 속성 추가 */
+    UFUNCTION(BlueprintCallable, Category = "Wings|Sequence")
+    bool AddAttributeToSequence(EWingsAttribute Attr);
+
+    /** 기체 시퀀스에서 특정 인덱스의 속성 제거 */
+    UFUNCTION(BlueprintCallable, Category = "Wings|Sequence")
+    void RemoveAttributeFromSequence(int32 Index);
+
+    /** 시퀀스 확정 */
+    UFUNCTION(BlueprintCallable, Category = "Wings|Sequence")
+    void ConfirmSequence();
+
+    /** 다음에 발사할 기체 클래스 반환 */
+    UFUNCTION(BlueprintPure, Category = "Wings|Sequence")
+    TSubclassOf<class AWingsPawnBase> GetNextProjectileClass() const;
+
+    /** 현재 시퀀스 정보 반환 */
+    UFUNCTION(BlueprintPure, Category = "Wings|Sequence")
+    const TArray<EWingsAttribute>& GetSelectedSequence() const { return SelectedSequence; }
+
+    /** 시퀀스가 가득 찼는지 여부 */
+    UFUNCTION(BlueprintPure, Category = "Wings|Sequence")
+    bool IsSequenceFull() const { return SelectedSequence.Num() >= TotalSpawnsAllowed; }
+
+    /** 시퀀스가 확정되었는지 여부 */
+    UFUNCTION(BlueprintPure, Category = "Wings|Sequence")
+    bool IsSequenceConfirmed() const { return bIsSequenceConfirmed; }
+
     /** 게임 상태 변경 알림판 */
     UPROPERTY(BlueprintAssignable, Category = "Wings|Events")
     FOnGameStateChanged OnGameStateChanged;
+
+    /** 기체 시퀀스 변경 알림판 */
+    UPROPERTY(BlueprintAssignable, Category = "Wings|Events")
+    FOnSequenceChanged OnSequenceChanged;
 
 protected:
     virtual void BeginPlay() override;
@@ -44,6 +79,18 @@ protected:
     /** 스테이지당 허용된 총 발사 횟수 */
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Wings|Stage")
     int32 TotalSpawnsAllowed = 3;
+
+    /** 속성별 기체 클래스 매핑 */
+    UPROPERTY(EditDefaultsOnly, Category = "Wings|Stage")
+    TMap<EWingsAttribute, TSubclassOf<class AWingsPawnBase>> AircraftClassMap;
+
+    /** 현재 선택된 기체 속성 시퀀스 */
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Wings|Stage")
+    TArray<EWingsAttribute> SelectedSequence;
+
+    /** 시퀀스 확정 여부 */
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Wings|Stage")
+    bool bIsSequenceConfirmed = false;
 
     /** 현재까지 발사된 기체 수 */
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Wings|Stage")

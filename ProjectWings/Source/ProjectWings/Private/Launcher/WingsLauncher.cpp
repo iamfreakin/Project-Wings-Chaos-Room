@@ -138,6 +138,11 @@ void AWingsLauncher::Input_Aim(const FInputActionValue& Value)
 
 void AWingsLauncher::Input_LaunchStarted(const FInputActionValue& Value)
 {
+    if (AWingsGameMode* GM = GetWorld()->GetAuthGameMode<AWingsGameMode>())
+    {
+        if (!GM->IsSequenceConfirmed()) return;
+    }
+
     bIsCharging = true;
     CurrentLaunchPower = 0.f;
 }
@@ -146,14 +151,22 @@ void AWingsLauncher::Input_LaunchCompleted(const FInputActionValue& Value)
 {
     bIsCharging = false;
     
-    if (ProjectileClass && LaunchDirectionIndicator)
+    AWingsGameMode* GM = GetWorld()->GetAuthGameMode<AWingsGameMode>();
+    if (!GM || !GM->IsSequenceConfirmed())
+    {
+        CurrentLaunchPower = 0.f;
+        return;
+    }
+
+    TSubclassOf<AWingsPawnBase> NextProjectileClass = GM->GetNextProjectileClass();
+    if (NextProjectileClass && LaunchDirectionIndicator)
     {
         FVector SpawnLocation = LaunchDirectionIndicator->GetComponentLocation();
         FRotator SpawnRotation = LaunchDirectionIndicator->GetComponentRotation();
 
         // 1. SpawnActorDeferred를 사용하여 초기화 제어권을 가짐
         if (AWingsPawnBase* LaunchedPawn = GetWorld()->SpawnActorDeferred<AWingsPawnBase>(
-            ProjectileClass, 
+            NextProjectileClass, 
             FTransform(SpawnRotation, SpawnLocation), 
             this, 
             GetInstigator(), 
@@ -175,10 +188,7 @@ void AWingsLauncher::Input_LaunchCompleted(const FInputActionValue& Value)
             }
 
             // [추가] GameMode에 발사 알림
-            if (AWingsGameMode* GM = GetWorld()->GetAuthGameMode<AWingsGameMode>())
-            {
-                GM->OnAircraftLaunched();
-            }
+            GM->OnAircraftLaunched();
 
             // 5. 조종권 전환
             if (AWingsPlayerController* PC = Cast<AWingsPlayerController>(GetController()))
@@ -195,7 +205,11 @@ void AWingsLauncher::Input_LaunchCompleted(const FInputActionValue& Value)
 
 void AWingsLauncher::UpdateTrajectory()
 {
-    if (!LaunchDirectionIndicator || !ProjectileClass) return;
+    AWingsGameMode* GM = GetWorld()->GetAuthGameMode<AWingsGameMode>();
+    if (!GM || !GM->IsSequenceConfirmed() || !LaunchDirectionIndicator) return;
+
+    TSubclassOf<AWingsPawnBase> NextProjectileClass = GM->GetNextProjectileClass();
+    if (!NextProjectileClass) return;
 
     FVector StartLocation = LaunchDirectionIndicator->GetComponentLocation();
     

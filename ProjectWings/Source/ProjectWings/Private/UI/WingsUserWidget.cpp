@@ -93,6 +93,28 @@ FText UWingsUserWidget::GetRemainingSpawnsText() const
     return FText::GetEmpty();
 }
 
+ESlateVisibility UWingsUserWidget::GetSelectionUIVisibility() const
+{
+    if (AWingsGameMode* GM = GetWorld()->GetAuthGameMode<AWingsGameMode>())
+    {
+        // 게임 오버가 아니고, 시퀀스가 확정되지 않았을 때만 표시
+        if (!GM->IsGameOver() && !GM->IsSequenceConfirmed())
+        {
+            return ESlateVisibility::Visible;
+        }
+    }
+    return ESlateVisibility::Collapsed;
+}
+
+TArray<EWingsAttribute> UWingsUserWidget::GetSelectedSequence() const
+{
+    if (AWingsGameMode* GM = GetWorld()->GetAuthGameMode<AWingsGameMode>())
+    {
+        return GM->GetSelectedSequence();
+    }
+    return TArray<EWingsAttribute>();
+}
+
 bool UWingsUserWidget::IsWaitingForRetry() const
 {
     if (AWingsGameMode* GM = GetWorld()->GetAuthGameMode<AWingsGameMode>())

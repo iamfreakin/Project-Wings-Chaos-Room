@@ -22,11 +22,8 @@ void AWingsPlayerController::BeginPlay()
 {
     Super::BeginPlay();
 
-    // 마우스 커서를 숨기고 게임 입력에만 집중하도록 설정
-    FInputModeGameOnly InputMode;
-    SetInputMode(InputMode);
-    bShowMouseCursor = false;
-
+    // 초기 입력 모드는 GameMode나 HUD에서 설정하도록 맡김 (선택 단계 지원)
+    
     // 월드에서 Launcher를 찾아 조종
     TArray<AActor*> FoundLaunchers;
     UGameplayStatics::GetAllActorsOfClass(GetWorld(), AWingsLauncher::StaticClass(), FoundLaunchers);

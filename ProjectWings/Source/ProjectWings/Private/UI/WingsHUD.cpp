@@ -13,23 +13,86 @@ void AWingsHUD::BeginPlay()
 {
 	Super::BeginPlay();
 
+    AWingsGameMode* GM = GetWorld()->GetAuthGameMode<AWingsGameMode>();
+
+    // 1. 선택 위젯 생성
+    if (SelectionWidgetClass)
+    {
+        SelectionWidget = CreateWidget<UUserWidget>(GetWorld(), SelectionWidgetClass);
+    }
+
+    // 2. 메인 HUD 위젯 생성
 	if (MainHUDWidgetClass)
 	{
 		MainHUDWidget = CreateWidget<UUserWidget>(GetWorld(), MainHUDWidgetClass);
-		if (MainHUDWidget)
-		{
-			MainHUDWidget->AddToViewport();
-		}
 	}
-	// GameMode의 이벤트 알림판에 내 함수(HandleGameStateChanged)를 등록!
-	if (AWingsGameMode* GM = GetWorld()->GetAuthGameMode<AWingsGameMode>())
+
+    // 3. 초기 UI 상태 설정
+    ToggleUI();
+
+	// 4. GameMode 이벤트 구독
+	if (GM)
 	{
 		GM->OnGameStateChanged.AddDynamic(this, &AWingsHUD::HandleGameStateChanged);
+        GM->OnSequenceChanged.AddDynamic(this, &AWingsHUD::HandleSequenceChanged);
 	}
+}
+
+void AWingsHUD::HandleSequenceChanged()
+{
+    ToggleUI();
+}
+
+void AWingsHUD::ToggleUI()
+{
+    AWingsGameMode* GM = GetWorld()->GetAuthGameMode<AWingsGameMode>();
+    if (!GM) return;
+
+    bool bIsConfirmed = GM->IsSequenceConfirmed();
+    APlayerController* PC = GetOwningPlayerController();
+
+    // 기체 선택 단계
+    if (!bIsConfirmed)
+    {
+        if (MainHUDWidget) MainHUDWidget->RemoveFromParent();
+        if (SelectionWidget && !SelectionWidget->IsInViewport())
+        {
+            SelectionWidget->AddToViewport();
+        }
+
+        // 마우스 커서 활성화 및 입력 모드 설정
+        if (PC)
+        {
+            FInputModeGameAndUI InputMode;
+            InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+            PC->SetInputMode(InputMode);
+            PC->bShowMouseCursor = true;
+        }
+    }
+    // 발사/비행 단계
+    else
+    {
+        if (SelectionWidget) SelectionWidget->RemoveFromParent();
+        if (MainHUDWidget && !MainHUDWidget->IsInViewport())
+        {
+            MainHUDWidget->AddToViewport();
+        }
+
+        // 마우스 커서 비활성화 및 게임 입력 전용 설정
+        if (PC)
+        {
+            FInputModeGameOnly InputMode;
+            PC->SetInputMode(InputMode);
+            PC->bShowMouseCursor = false;
+        }
+    }
 }
 
 void AWingsHUD::HandleGameStateChanged(bool bIsWin)
 {
+    // 게임 종료 시 기존 UI 제거
+    if (SelectionWidget) SelectionWidget->RemoveFromParent();
+    if (MainHUDWidget) MainHUDWidget->RemoveFromParent();
 	TSubclassOf<UUserWidget> SelectedClass = bIsWin ? VictoryWidgetClass : GameOverWidgetClass;
 
 	if (SelectedClass)
