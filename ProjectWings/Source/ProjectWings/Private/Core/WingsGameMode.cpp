@@ -58,7 +58,9 @@ void AWingsGameMode::OnAircraftCrashed()
     }
     else
     {
-        HandleGameLoss();
+        // [중요] 마지막 기체가 추락했을 때 즉시 패배를 선언하지 않고 0.15초 기다림.
+        // Chaos 파괴 이벤트(OnChaosBreak)가 비동기로 발생하여 1~2프레임 뒤늦게 도착하기 때문.
+        GetWorldTimerManager().SetTimer(LossCheckTimerHandle, this, &AWingsGameMode::HandleGameLoss, 0.15f, false);
     }
 }
 
@@ -71,6 +73,8 @@ void AWingsGameMode::OnTargetDestroyed()
 
     if (RemainingTargets <= 0)
     {
+        // 승리 조건 달성 시 예약된 패배 판정 타이머가 있다면 취소
+        GetWorldTimerManager().ClearTimer(LossCheckTimerHandle);
         HandleGameWin();
     }
 }

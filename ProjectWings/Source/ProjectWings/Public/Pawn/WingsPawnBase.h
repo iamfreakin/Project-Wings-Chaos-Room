@@ -125,7 +125,7 @@ protected:
 	void OnMeshHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
 
 	/** 충돌 지점에 물리적 충격파(Strain/Force)를 발산합니다. */
-	void SpawnDestructionField(FVector ContactLocation, FVector HitNormal, float DamageMultiplier = 1.0f);
+	void SpawnDestructionField(FVector ContactLocation, FVector HitNormal, const class UWingsDestructionData* DestructionData, float DamageMultiplier = 1.0f, float ImpactSpeed = 0.0f);
 
 public:
 	/** 컴포넌트 게터 */

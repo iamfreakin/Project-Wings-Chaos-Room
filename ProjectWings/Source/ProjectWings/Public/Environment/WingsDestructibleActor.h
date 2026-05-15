@@ -54,4 +54,10 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "Wings|Destruction")
 	const UWingsDestructionData* GetDestructionData() const { return DestructionData.Get(); }
+
+	/** 런타임에 파괴 임계치를 조절합니다. (속성 불일치 시 물리 파괴 방지용) */
+	void SetDynamicDamageThreshold(float NewThreshold);
+
+	/** 오브젝트를 물리적으로 활성화(Dynamic) 상태로 전환합니다. */
+	void SetStateToDynamic();
 };

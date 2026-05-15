@@ -403,47 +403,52 @@ void AWingsPawnBase::OnMeshHit(UPrimitiveComponent* HitComponent, AActor* OtherA
 
 	if (AWingsDestructibleActor* DestructibleActor = Cast<AWingsDestructibleActor>(OtherActor))
 	{
-		// 데이터 에셋을 넘겨주어 속도 및 힘 계산에 사용
-		SpawnDestructionField(Hit.ImpactPoint, Hit.ImpactNormal, 1.0f);
-	}
+		float DamageMultiplier = 0.01f;
 
-	SetPawnState(EWingsPawnState::Crashed);
-	UE_LOG(LogWings, Log, TEXT("Pawn Crashed! Impact Speed: %.1f"), GetVelocity().Size());
-}
-
-void AWingsPawnBase::SpawnDestructionField(FVector ContactLocation, FVector HitNormal, float DamageMultiplier)
-{
-	if (!FieldSystemComponent || !MeshComponent) return;
-
-	// 1. 충돌한 액터로부터 데이터 에셋 가져오기
-	const UWingsDestructionData* DestructionData = nullptr;
-	FHitResult HitResult;
-	// 간단히 주변 액터를 체크하여 데이터 에셋 참조
-	TArray<AActor*> OverlappingActors;
-	GetOverlappingActors(OverlappingActors, AWingsDestructibleActor::StaticClass());
-	for (AActor* Actor : OverlappingActors)
-	{
-		if (AWingsDestructibleActor* DA = Cast<AWingsDestructibleActor>(Actor))
+		// 1. 속성 비교 및 상태 전환
+		if (Attribute == EWingsAttribute::Universal || Attribute == DestructibleActor->GetAttribute())
 		{
-			DestructionData = DA->GetDestructionData();
-			if (DestructionData) break;
+			DamageMultiplier = 1.0f;
+			// 속성이 맞으면 물리 활성화 및 정상 임계치로 설정
+			DestructibleActor->SetStateToDynamic();
+			DestructibleActor->SetDynamicDamageThreshold(80000000.0f);
+			UE_LOG(LogWings, Log, TEXT("Attribute Match! Applying Full Damage."));
+
+			// 2. 충격량 기반 속도 역계산 (충돌 전 속도 추정)
+			float ImpactSpeedKmh = (NormalImpulse.Size() / MeshComponent->GetMass()) * 0.036f;
+		
+			// 3. 파괴 필드 생성 (속성이 맞을 때만 필드 생성)
+			SpawnDestructionField(Hit.ImpactPoint, Hit.ImpactNormal, DestructibleActor->GetDestructionData(), DamageMultiplier, ImpactSpeedKmh);
+		}
+		else
+		{
+			// 속성이 안 맞으면 임계치를 극단적으로 높여 물리 파괴를 막고, 필드도 생성하지 않음
+			DestructibleActor->SetDynamicDamageThreshold(10000000000.0f);
+			UE_LOG(LogWings, Warning, TEXT("Attribute Mismatch! Target LOCKED (Threshold Raised)."));
 		}
 	}
 
-	// 2. 속도 체크 (Km/h 기준)
-	float SpeedKmh = GetVelocity().Size() * 0.036f;
-	float MinSpeed = DestructionData ? DestructionData->MinBreakSpeedKmh : 60.0f;
+	SetPawnState(EWingsPawnState::Crashed);
+	UE_LOG(LogWings, Log, TEXT("Pawn Crashed! Raw Velocity at Hit: %.1f"), GetVelocity().Size());
+}
 
-	if (SpeedKmh < MinSpeed)
+void AWingsPawnBase::SpawnDestructionField(FVector ContactLocation, FVector HitNormal, const UWingsDestructionData* DestructionData, float DamageMultiplier, float ImpactSpeed)
+{
+	if (!FieldSystemComponent || !MeshComponent || !DestructionData) return;
+
+	// 1. 속도 체크 (전달받은 충격 속도 기준)
+	float MinSpeed = DestructionData->MinBreakSpeedKmh;
+
+	if (ImpactSpeed < MinSpeed)
 	{
-		UE_LOG(LogWings, Warning, TEXT("Impact too slow to break (%.1f < %.1f Km/h)"), SpeedKmh, MinSpeed);
+		UE_LOG(LogWings, Warning, TEXT("Impact too slow to break (%.1f < %.1f Km/h)"), ImpactSpeed, MinSpeed);
 		return;
 	}
 
-	// 3. 파괴력 및 밀어내는 힘 설정
-	float Strength = 10000000.0f; 
-	float PushForce = DestructionData ? DestructionData->ExplosionForce : 1000.0f;
-	float Radius = 500.0f;
+	// 2. 파괴력 및 밀어내는 힘 설정 (상성 배율 DamageMultiplier 적용)
+	float Strength = 100000000.0f * DamageMultiplier; // 단단해진 블록을 뚫기 위해 기본 강도 상향
+	float PushForce = DestructionData->ExplosionForce * DamageMultiplier;
+	float Radius = 600.0f * (DamageMultiplier > 0.5f ? 1.0f : 0.3f);
 
 	// A & B: Strain 필드 (파괴 트리거)
 	URadialFalloff* StrainFalloff = NewObject<URadialFalloff>(this);
@@ -462,5 +467,5 @@ void AWingsPawnBase::SpawnDestructionField(FVector ContactLocation, FVector HitN
 
 	FieldSystemComponent->ApplyPhysicsField(true, EFieldPhysicsType::Field_LinearVelocity, nullptr, CullingField);
 
-	UE_LOG(LogWings, Log, TEXT("Break with Force! Speed: %.1f Km/h, Push: %.1f"), SpeedKmh, PushForce);
+	UE_LOG(LogWings, Log, TEXT("Break with Force! Multiplier: %.2f, Strength: %.1f, Push: %.1f"), DamageMultiplier, Strength, PushForce);
 }

@@ -15,7 +15,9 @@ AWingsDestructibleActor::AWingsDestructibleActor()
 	{
 		GCC->SetGenerateOverlapEvents(true);
 		GCC->SetNotifyRigidBodyCollision(true);
-		GCC->SetSimulatePhysics(true); // 기본적으로 물리 시뮬레이션 활성화
+		
+		// [복구] 물리 시뮬레이션은 켜두어야 충돌(Block)이 정상 작동함
+		GCC->SetSimulatePhysics(true); 
 		
 		// 기본적으로 내비게이션에 영향을 주지 않도록 설정 (성능)
 		GCC->SetCanEverAffectNavigation(false);
@@ -28,28 +30,21 @@ void AWingsDestructibleActor::BeginPlay()
 
 	if (UGeometryCollectionComponent* GCC = GetGeometryCollectionComponent())
 	{
-		// 1. [자가 붕괴 방지] 최소 임계치 고정
-		GCC->SetDamageThreshold({ 500000.0f }); 
+		// 1. [충돌 설정 강화] 기체가 통과하지 못하도록 차단
+		GCC->SetCollisionProfileName(TEXT("BlockAll"));
+		GCC->SetCollisionResponseToAllChannels(ECR_Block);
 
-		// 2. [앵커링] 시작 시 Sleeping 상태로 설정하여 부딪히기 전까지 공중 고정
-		GCC->ObjectType = EObjectStateTypeEnum::Chaos_Object_Sleeping;
+		// 2. [추락 방지 핵심] 중력을 아예 꺼버림
+		// 물리 엔진이 블록을 깨우더라도(Wake-up), 중력이 없으면 아래로 떨어지지 않음.
+		GCC->SetEnableGravity(false);
 
-		// 3. [소멸] 데이터 에셋이 있으면 제거 시간 설정 적용
-		if (DestructionData)
-		{
-			if (const UGeometryCollection* RestCollectionAsset = GCC->GetRestCollection())
-			{
-				FGeometryCollectionEdit GCEdit = GCC->EditRestCollection(GeometryCollection::EEditUpdate::RestPhysicsDynamic);
-				if (UGeometryCollection* RestCollection = GCEdit.GetRestCollection())
-				{
-					RestCollection->bRemoveOnMaxSleep = true;
-					RestCollection->MaximumSleepTime = FVector2D(DestructionData->RemovalDuration, DestructionData->RemovalDuration + 0.5f);
-					RestCollection->RemovalDuration = FVector2D(1.0f, 1.0f); 
-					RestCollection->bScaleOnRemoval = true;
-				}
-			}
-		}
+		// 3. [초기 잠금] 모든 레벨에 대해 극단적으로 높은 임계치 적용
+		SetDynamicDamageThreshold(10000000000.0f);
 
+		// 4. [운동학적 고정] Static보다 더 확실하게 외부 충격에 의한 이동을 막음
+		GCC->ObjectType = EObjectStateTypeEnum::Chaos_Object_Kinematic;
+
+		// 5. [이벤트 바인딩]
 		GCC->SetNotifyBreaks(true);
 		GCC->OnChaosBreakEvent.AddDynamic(this, &AWingsDestructibleActor::OnChaosBreak);
 	}
@@ -57,7 +52,7 @@ void AWingsDestructibleActor::BeginPlay()
 
 void AWingsDestructibleActor::OnChaosBreak(const FChaosBreakEvent& BreakEvent)
 {
-	// 1. 목표물 파괴 체크 (이 로직은 유지해야 게임 클리어가 가능함)
+	// 1. 목표물 파괴 체크
 	if (bIsTarget && !bHasBeenCounted)
 	{
 		if (AWingsGameMode* GM = GetWorld()->GetAuthGameMode<AWingsGameMode>())
@@ -66,6 +61,27 @@ void AWingsDestructibleActor::OnChaosBreak(const FChaosBreakEvent& BreakEvent)
 			GM->OnTargetDestroyed();
 		}
 	}
+}
 
-	// 2. 파괴 전파 로직 삭제 (도미노 현상 방지)
+void AWingsDestructibleActor::SetDynamicDamageThreshold(float NewThreshold)
+{
+	if (UGeometryCollectionComponent* GCC = GetGeometryCollectionComponent())
+	{
+		TArray<float> Thresholds;
+		for(int32 i=0; i<8; ++i) Thresholds.Add(NewThreshold);
+		GCC->SetDamageThreshold(Thresholds);
+	}
+}
+
+void AWingsDestructibleActor::SetStateToDynamic()
+{
+	if (UGeometryCollectionComponent* GCC = GetGeometryCollectionComponent())
+	{
+		// 정당한 속성 타격 시에만 중력을 켜고 Dynamic으로 전환
+		GCC->SetEnableGravity(true);
+		GCC->ObjectType = EObjectStateTypeEnum::Chaos_Object_Dynamic;
+		
+		// 물리 시뮬레이션 재확인
+		GCC->SetSimulatePhysics(true);
+	}
 }

@@ -1,5 +1,13 @@
 # Project Wings: Development History
 
+## [2026-05-15] 속성 기반 파괴 로직 버그 수정
+### Fixed
+- **속성 기반 파괴 로직 버그 수정**: 기체와 대상의 속성(`EWingsAttribute`) 불일치 시에도 블록이 파괴되던 문제를 해결.
+  - `OnMeshHit`에서 속성 비교 로직을 추가하여 상성 불일치 시 `DamageMultiplier`를 0.01(1%)로 설정.
+  - `SpawnDestructionField`가 전달받은 `DamageMultiplier`를 실제 `Strength`, `ExplosionForce`, `Radius`에 적용하도록 수정.
+  - `Universal` 속성이 모든 속성을 파괴할 수 있도록 예외 처리 추가.
+  - `SpawnDestructionField` 내부의 불필요한 `GetOverlappingActors` 루프를 제거하고 인자로 `DestructionData`를 직접 받도록 최적화.
+
 ## [2026-05-15] 코드 정리 및 구조 단순화 완료
 ### Removed
 - `AWingsPawnBase`에서 연료(Fuel) 시스템 및 관련 Tick 로직 전면 삭제.

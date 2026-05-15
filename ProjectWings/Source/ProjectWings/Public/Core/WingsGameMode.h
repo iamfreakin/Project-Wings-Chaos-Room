@@ -64,6 +64,9 @@ protected:
     /** 게임 종료 정보 */
     bool bIsGameOver = false;
 
+    /** 패배 판정 유예 타이머 (마지막 기체와 마지막 타겟 파괴 간의 레이스 컨디션 해결) */
+    FTimerHandle LossCheckTimerHandle;
+
 public:
     /** 게터 */
     UFUNCTION(BlueprintPure, Category = "Wings|Stage")
