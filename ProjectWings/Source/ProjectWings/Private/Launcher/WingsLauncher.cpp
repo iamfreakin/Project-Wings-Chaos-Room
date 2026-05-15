@@ -198,22 +198,20 @@ void AWingsLauncher::UpdateTrajectory()
     if (!LaunchDirectionIndicator || !ProjectileClass) return;
 
     FVector StartLocation = LaunchDirectionIndicator->GetComponentLocation();
+    
+    // 실제 발사 시 AddImpulse(..., true)를 사용하므로 질량으로 나눌 필요가 없음.
+    // MaxLaunchForce는 실제로는 초기 속도(cm/s) 역할을 함.
     FVector LaunchVelocity = LaunchDirectionIndicator->GetForwardVector() * (MaxLaunchForce * CurrentLaunchPower);
     
-    // 발사될 기체의 CDO로부터 질량 정보를 가져옴
-    float ProjectileMass = 200.0f;
-    if (AWingsPawnBase* DefaultPawn = ProjectileClass->GetDefaultObject<AWingsPawnBase>())
-    {
-        ProjectileMass = DefaultPawn->GetPawnMass();
-    }
-
     FVector Gravity = FVector(0.f, 0.f, GetWorld()->GetGravityZ());
 
-    FPredictProjectilePathParams PathParams(TrajectoryRadius, StartLocation, LaunchVelocity / ProjectileMass, TrajectoryMaxTime);
+    // 궤적 표시 성능 및 시인성 개선
+    FPredictProjectilePathParams PathParams(TrajectoryRadius, StartLocation, LaunchVelocity, TrajectoryMaxTime * 1.5f);
     PathParams.DrawDebugTime = 0.1f;
     PathParams.DrawDebugType = EDrawDebugTrace::ForOneFrame;
     PathParams.OverrideGravityZ = Gravity.Z;
     PathParams.bTraceWithCollision = true;
+    PathParams.SimFrequency = 30.0f; // 더 매끄러운 궤적 표시
 
     FPredictProjectilePathResult PathResult;
     UGameplayStatics::PredictProjectilePath(this, PathParams, PathResult);

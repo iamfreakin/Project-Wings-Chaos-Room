@@ -110,12 +110,15 @@ void AWingsPawnBase::Tick(float DeltaTime)
 
 	if (CurrentState == EWingsPawnState::Flying)
 	{
-		// 1. Velocity Alignment: 진행 방향 보정 (공기 저항)
 		FVector CurrentVelocity = MeshComponent->GetPhysicsLinearVelocity();
 		float Speed = CurrentVelocity.Size();
-		float AlignSpeed = FlightData ? FlightData->VelocityAlignmentSpeed : 2.0f;
-		
-		MeshComponent->SetLinearDamping(0.5f);
+
+		// [개선] 최고 속도 향상을 위한 동적 선형 감쇄 (고속에서 저항 감소)
+		float DynamicDamping = FMath::GetMappedRangeValueClamped(FVector2D(2000.f, 15000.f), FVector2D(0.1f, 0.6f), Speed);
+		MeshComponent->SetLinearDamping(DynamicDamping);
+
+		// 1. Velocity Alignment: 진행 방향 보정 (공기 저항)
+		float AlignSpeed = FlightData ? (FlightData->VelocityAlignmentSpeed * 0.6f) : 1.2f;
 
 		if (Speed > 100.f)
 		{
@@ -158,17 +161,21 @@ void AWingsPawnBase::Tick(float DeltaTime)
 			MeshComponent->AddTorqueInRadians(FVector::UpVector * YawTorque, NAME_None, true);
 		}
 
-		// 4. Constant Thrust & Fake Lift
+		// 4. Constant Thrust & Refined Lift
 		if (CurrentThrust > 0.f)
 		{
-			MeshComponent->AddForce(GetActorForwardVector() * CurrentThrust, NAME_None, true);
+			// [개선] 목표 속도(400km/h) 달성을 위한 추진력 강화
+			MeshComponent->AddForce(GetActorForwardVector() * CurrentThrust * 250.0f, NAME_None, false);
 		}
 
-		float LiftMultiplier = FlightData ? FlightData->LiftForceMultiplier : 0.1f;
+		// [개선] 양력 계산 방식 정교화 (기각에 따른 효율 적용)
+		float PitchAlpha = FVector::DotProduct(GetActorForwardVector(), FVector::UpVector); // -1(수직하강) ~ 1(수직상승)
+		float LiftEffectiveness = FMath::Clamp(1.0f - FMath::Abs(PitchAlpha), 0.f, 1.f);
+		float LiftMultiplier = FlightData ? (FlightData->LiftForceMultiplier * 0.5f) : 0.05f;
 
 		if (Speed > 500.f)
 		{
-			FVector LiftForce = FVector::UpVector * Speed * LiftMultiplier * MeshComponent->GetMass();
+			FVector LiftForce = FVector::UpVector * Speed * LiftMultiplier * LiftEffectiveness * MeshComponent->GetMass();
 			MeshComponent->AddForce(LiftForce, NAME_None, false);
 		}
 
