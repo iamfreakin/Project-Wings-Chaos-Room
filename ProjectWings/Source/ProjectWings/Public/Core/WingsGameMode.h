@@ -63,8 +63,6 @@ protected:
 
     /** 게임 종료 정보 */
     bool bIsGameOver = false;
-    bool bIsWin = false;
-    bool bIsLoss = false;
 
 public:
     /** 게터 */
@@ -81,8 +79,12 @@ public:
     int32 GetRemainingTargets() const { return RemainingTargets; }
 
     UFUNCTION(BlueprintPure, Category = "Wings|Stage")
-    bool IsGameWon() const { return bIsWin; }
+    bool IsGameOver() const { return bIsGameOver; }
+
+    /** [DEPRECATED] UI 호환용 승패 판단 게터 */
+    UFUNCTION(BlueprintPure, Category = "Wings|Stage")
+    bool IsGameWon() const { return bIsGameOver && RemainingTargets <= 0; }
 
     UFUNCTION(BlueprintPure, Category = "Wings|Stage")
-    bool IsGameLost() const { return bIsLoss; }
+    bool IsGameLost() const { return bIsGameOver && RemainingTargets > 0; }
 };

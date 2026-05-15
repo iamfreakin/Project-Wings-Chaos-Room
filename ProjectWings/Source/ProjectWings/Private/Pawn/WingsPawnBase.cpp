@@ -29,7 +29,7 @@ AWingsPawnBase::AWingsPawnBase()
 	RootComponent = MeshComponent;
 	MeshComponent->SetSimulatePhysics(true);
 	MeshComponent->SetNotifyRigidBodyCollision(true);
-	MeshComponent->SetMassOverrideInKg(NAME_None, 200.0f, true); // 5000kg -> 200kg로 대폭 하향
+	MeshComponent->SetMassOverrideInKg(NAME_None, 200.0f, true); 
 
 	MeshComponent->SetLinearDamping(0.5f);
 	MeshComponent->SetAngularDamping(1.0f);
@@ -63,10 +63,6 @@ AWingsPawnBase::AWingsPawnBase()
 	bEnableAutoLeveling = true;
 	CurrentThrust = 0.0f;
 
-	// 연료 관련 기본값 설정
-	MaxFuel = 100.0f;
-	CurrentFuel = 100.0f;
-
 	// 파괴 충격파를 발산하는 필드 시스템 컴포넌트
 	FieldSystemComponent = CreateDefaultSubobject<UFieldSystemComponent>(TEXT("FieldSystemComponent"));
 	FieldSystemComponent->SetupAttachment(RootComponent);
@@ -80,14 +76,20 @@ void AWingsPawnBase::BeginPlay()
 {
 	Super::BeginPlay();
 
-	CurrentFuel = MaxFuel;
-
-	// 데이터 에셋 기반 카메라 초기 설정
-	if (FlightData && SpringArmComponent)
+	// 데이터 에셋 기반 초기 설정
+	if (FlightData)
 	{
-		SpringArmComponent->CameraLagSpeed = FlightData->CameraLagSpeed;
-		SpringArmComponent->CameraRotationLagSpeed = FlightData->CameraRotationLagSpeed;
-		SpringArmComponent->TargetArmLength = FlightData->MinArmLength;
+		if (SpringArmComponent)
+		{
+			SpringArmComponent->CameraLagSpeed = FlightData->CameraLagSpeed;
+			SpringArmComponent->CameraRotationLagSpeed = FlightData->CameraRotationLagSpeed;
+			SpringArmComponent->TargetArmLength = FlightData->MinArmLength;
+		}
+
+		if (MeshComponent)
+		{
+			MeshComponent->SetMassOverrideInKg(NAME_None, FlightData->PawnMass, true);
+		}
 	}
 
 	if (EngineTrailComponent)
@@ -108,59 +110,12 @@ void AWingsPawnBase::Tick(float DeltaTime)
 
 	if (CurrentState == EWingsPawnState::Flying)
 	{
-		// 0. 연료 소모 및 고갈 처리
-		if (CurrentFuel > 0.f)
-		{
-			float FuelRate = FlightData ? FlightData->FuelConsumptionRate : 1.0f;
-			float ThrustMult = FlightData ? FlightData->ThrustFuelMultiplier : 2.0f;
-			float MaxThrust = FlightData ? FlightData->MaxForwardThrust : 50000.0f;
-
-			float ThrustRatio = (MaxThrust > 0.f) ? (CurrentThrust / MaxThrust) : 0.f;
-			float ActualConsumption = FuelRate + (ThrustRatio * FuelRate * ThrustMult);
-			
-			CurrentFuel = FMath::Max(0.f, CurrentFuel - (ActualConsumption * DeltaTime));
-
-			// Niagara 파라미터 업데이트 (연료량 연동)
-			if (EngineTrailComponent)
-			{
-				EngineTrailComponent->SetFloatParameter(TEXT("FuelPercentage"), GetFuelPercentage());
-			}
-
-			if (GEngine)
-			{
-				GEngine->AddOnScreenDebugMessage(2, DeltaTime, FColor::Green, 
-					FString::Printf(TEXT("Fuel: %.1f%%"), GetFuelPercentage() * 100.f));
-			}
-
-			// 일반 비행 시 안정성 유지 (공기 저항)
-			MeshComponent->SetLinearDamping(0.5f);
-		}
-		else
-		{
-			// 연료 고갈 시: 추진력 차단 및 엔진 트레일 비활성화
-			if (CurrentThrust > 0.f)
-			{
-				CurrentThrust = 0.f;
-				if (EngineTrailComponent) EngineTrailComponent->Deactivate();
-				UE_LOG(LogWings, Warning, TEXT("OUT OF FUEL! Momentum preserved, gravity taking over."));
-			}
-			
-			if (GEngine)
-			{
-				GEngine->AddOnScreenDebugMessage(2, DeltaTime, FColor::Red, TEXT("OUT OF FUEL!"));
-			}
-
-			// 활공을 위해 저항 극최소화 (관성 보존 극대화)
-			MeshComponent->SetLinearDamping(0.01f);
-		}
-
-		// 1. Velocity Alignment: 진행 방향 보정 (엔진 유무에 따라 감도 조절)
+		// 1. Velocity Alignment: 진행 방향 보정 (공기 저항)
 		FVector CurrentVelocity = MeshComponent->GetPhysicsLinearVelocity();
 		float Speed = CurrentVelocity.Size();
 		float AlignSpeed = FlightData ? FlightData->VelocityAlignmentSpeed : 2.0f;
 		
-		// 연료 고갈 시에는 보정력을 약화시켜 활공 느낌 강화
-		if (CurrentFuel <= 0.f) AlignSpeed *= 0.5f;
+		MeshComponent->SetLinearDamping(0.5f);
 
 		if (Speed > 100.f)
 		{
@@ -210,7 +165,6 @@ void AWingsPawnBase::Tick(float DeltaTime)
 		}
 
 		float LiftMultiplier = FlightData ? FlightData->LiftForceMultiplier : 0.1f;
-		if (CurrentFuel <= 0.f) LiftMultiplier *= 0.1f;
 
 		if (Speed > 500.f)
 		{
@@ -414,7 +368,7 @@ void AWingsPawnBase::Input_Roll(const FInputActionValue& Value)
 
 void AWingsPawnBase::Input_Thrust(const FInputActionValue& Value)
 {
-	if (CurrentState != EWingsPawnState::Flying || CurrentFuel <= 0.f) return;
+	if (CurrentState != EWingsPawnState::Flying) return;
 
 	float ThrustInput = Value.Get<float>();
 	float MaxThrust = FlightData ? FlightData->MaxForwardThrust : 50000.0f;
@@ -433,95 +387,80 @@ void AWingsPawnBase::Input_FreeLookCompleted(const FInputActionValue& Value)
 	bIsFreeLooking = false;
 }
 
+UInputMappingContext* AWingsPawnBase::GetDefaultMappingContext() const
+{
+	return DefaultMappingContext.Get();
+}
+
+float AWingsPawnBase::GetPawnMass() const
+{
+	return FlightData ? FlightData->PawnMass : 200.0f;
+}
+
 void AWingsPawnBase::OnMeshHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
 	if (CurrentState != EWingsPawnState::Flying) return;
 
-	float DamageMultiplier = 1.0f;
-	bool bIsAttributeMatched = true;
-
-	// 상성 체크: AWingsDestructibleActor인 경우 속성을 비교합니다.
 	if (AWingsDestructibleActor* DestructibleActor = Cast<AWingsDestructibleActor>(OtherActor))
 	{
-		EWingsAttribute TargetAttribute = DestructibleActor->GetAttribute();
-
-		// 1. 속성 상성 체크 (Universal 속성은 무조건 패스)
-		if (Attribute != EWingsAttribute::Universal && Attribute != TargetAttribute)
-		{
-			// 상성이 맞지 않으면 거의 없는 수준(0.01%)의 데미지만 적용
-			DamageMultiplier = 0.0001f;
-			bIsAttributeMatched = false;
-		}
-		else
-		{
-			// 2. 상성이 맞을 때만 타겟의 고유 폭발력 배수 반영
-			if (const UWingsDestructionData* Data = DestructibleActor->GetDestructionData())
-			{
-				DamageMultiplier = Data->ExplosionForceMultiplier;
-			}
-		}
-
-		// 상세 로그 출력 (분석용)
-		FString PawnAttrStr = StaticEnum<EWingsAttribute>()->GetNameStringByValue((int64)Attribute);
-		FString TargetAttrStr = StaticEnum<EWingsAttribute>()->GetNameStringByValue((int64)TargetAttribute);
-
-		if (bIsAttributeMatched)
-		{
-			UE_LOG(LogWings, Log, TEXT("Attribute Match! Pawn[%s] vs Target[%s]. Multiplier: %.1f"), *PawnAttrStr, *TargetAttrStr, DamageMultiplier);
-		}
-		else
-		{
-			UE_LOG(LogWings, Warning, TEXT("Attribute Mismatch! Pawn[%s] vs Target[%s]. Damage Minimized (0.01%%)."), *PawnAttrStr, *TargetAttrStr);
-		}
+		// 데이터 에셋을 넘겨주어 속도 및 힘 계산에 사용
+		SpawnDestructionField(Hit.ImpactPoint, Hit.ImpactNormal, 1.0f);
 	}
 
 	SetPawnState(EWingsPawnState::Crashed);
-
-	// [수정] 상성이 맞지 않으면 파괴 필드(충격파)를 아예 생성하지 않음
-	if (bIsAttributeMatched)
-	{
-		SpawnDestructionField(Hit.ImpactPoint, Hit.ImpactNormal, DamageMultiplier);
-	}
-	else
-	{
-		UE_LOG(LogWings, Warning, TEXT("Destruction Field Blocked due to Attribute Mismatch."));
-	}
-
-	UE_LOG(LogWings, Log, TEXT("Pawn Crashed! Impact Speed: %.1f, Final Multiplier: %.4f"), GetVelocity().Size(), DamageMultiplier);
+	UE_LOG(LogWings, Log, TEXT("Pawn Crashed! Impact Speed: %.1f"), GetVelocity().Size());
 }
+
 void AWingsPawnBase::SpawnDestructionField(FVector ContactLocation, FVector HitNormal, float DamageMultiplier)
 {
 	if (!FieldSystemComponent || !MeshComponent) return;
 
-	float Speed = GetVelocity().Size();
-	float Mass = MeshComponent->GetMass();
-	
-	float BaseRadius = FlightData ? FlightData->DestructionFieldRadius : 500.0f;
-	float BaseStrength = FlightData ? FlightData->DestructionFieldStrength : 1000000.0f;
-	float MassRef = FlightData ? FlightData->DestructionMassReference : 100.0f;
+	// 1. 충돌한 액터로부터 데이터 에셋 가져오기
+	const UWingsDestructionData* DestructionData = nullptr;
+	FHitResult HitResult;
+	// 간단히 주변 액터를 체크하여 데이터 에셋 참조
+	TArray<AActor*> OverlappingActors;
+	GetOverlappingActors(OverlappingActors, AWingsDestructibleActor::StaticClass());
+	for (AActor* Actor : OverlappingActors)
+	{
+		if (AWingsDestructibleActor* DA = Cast<AWingsDestructibleActor>(Actor))
+		{
+			DestructionData = DA->GetDestructionData();
+			if (DestructionData) break;
+		}
+	}
 
-	float SpeedAlpha = FMath::Clamp(Speed / 5000.0f, 0.5f, 3.0f);
-	float MassAlpha = FMath::Max(0.1f, Mass / MassRef);
+	// 2. 속도 체크 (Km/h 기준)
+	float SpeedKmh = GetVelocity().Size() * 0.036f;
+	float MinSpeed = DestructionData ? DestructionData->MinBreakSpeedKmh : 60.0f;
 
-	// 상성 배율 적용: 상성이 안 맞으면 반경도 아주 작게(10%) 축소
-	float FinalRadius = BaseRadius * SpeedAlpha * FMath::Sqrt(MassAlpha) * (DamageMultiplier > 0.01f ? 1.0f : 0.1f);
-	float FinalStrength = BaseStrength * SpeedAlpha * MassAlpha * DamageMultiplier;
+	if (SpeedKmh < MinSpeed)
+	{
+		UE_LOG(LogWings, Warning, TEXT("Impact too slow to break (%.1f < %.1f Km/h)"), SpeedKmh, MinSpeed);
+		return;
+	}
 
+	// 3. 파괴력 및 밀어내는 힘 설정
+	float Strength = 10000000.0f; 
+	float PushForce = DestructionData ? DestructionData->ExplosionForce : 1000.0f;
+	float Radius = 500.0f;
+
+	// A & B: Strain 필드 (파괴 트리거)
 	URadialFalloff* StrainFalloff = NewObject<URadialFalloff>(this);
-	StrainFalloff->SetRadialFalloff(FinalStrength, 0.f, FinalStrength, 0.f, FinalRadius, ContactLocation, EFieldFalloffType::Field_FallOff_None);
-	
+	StrainFalloff->SetRadialFalloff(Strength, 0.f, Strength, 0.f, Radius, ContactLocation, EFieldFalloffType::Field_FallOff_None);
 	FieldSystemComponent->ApplyPhysicsField(true, EFieldPhysicsType::Field_ExternalClusterStrain, nullptr, StrainFalloff);
 
+	// C: 밀어내기 필드 (LinearVelocity)
 	URadialVector* RadialVector = NewObject<URadialVector>(this);
-	RadialVector->SetRadialVector(FinalStrength, ContactLocation); 
+	RadialVector->SetRadialVector(PushForce * 100.0f, ContactLocation); // 힘 보정
 
 	URadialIntMask* RadialMask = NewObject<URadialIntMask>(this);
-	RadialMask->SetRadialIntMask(FinalRadius, ContactLocation, 1, 0, Field_Set_Always);
+	RadialMask->SetRadialIntMask(Radius, ContactLocation, 1, 0, Field_Set_Always);
 
 	UCullingField* CullingField = NewObject<UCullingField>(this);
 	CullingField->SetCullingField(RadialMask, RadialVector, Field_Culling_Outside);
 
 	FieldSystemComponent->ApplyPhysicsField(true, EFieldPhysicsType::Field_LinearVelocity, nullptr, CullingField);
 
-	UE_LOG(LogWings, Log, TEXT("Shockwave Spawned! Mass: %.1f, Radius: %.1f, Strength: %.1f, Multiplier: %.2f"), Mass, FinalRadius, FinalStrength, DamageMultiplier);
+	UE_LOG(LogWings, Log, TEXT("Break with Force! Speed: %.1f Km/h, Push: %.1f"), SpeedKmh, PushForce);
 }

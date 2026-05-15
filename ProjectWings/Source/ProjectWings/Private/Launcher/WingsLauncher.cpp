@@ -195,12 +195,18 @@ void AWingsLauncher::Input_LaunchCompleted(const FInputActionValue& Value)
 
 void AWingsLauncher::UpdateTrajectory()
 {
-    if (!LaunchDirectionIndicator) return;
+    if (!LaunchDirectionIndicator || !ProjectileClass) return;
 
     FVector StartLocation = LaunchDirectionIndicator->GetComponentLocation();
     FVector LaunchVelocity = LaunchDirectionIndicator->GetForwardVector() * (MaxLaunchForce * CurrentLaunchPower);
     
-    float ProjectileMass = 1.0f; 
+    // 발사될 기체의 CDO로부터 질량 정보를 가져옴
+    float ProjectileMass = 200.0f;
+    if (AWingsPawnBase* DefaultPawn = ProjectileClass->GetDefaultObject<AWingsPawnBase>())
+    {
+        ProjectileMass = DefaultPawn->GetPawnMass();
+    }
+
     FVector Gravity = FVector(0.f, 0.f, GetWorld()->GetGravityZ());
 
     FPredictProjectilePathParams PathParams(TrajectoryRadius, StartLocation, LaunchVelocity / ProjectileMass, TrajectoryMaxTime);

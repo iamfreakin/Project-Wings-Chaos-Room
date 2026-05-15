@@ -26,7 +26,7 @@ protected:
 	virtual void BeginPlay() override;
 
 protected:
-	/** 파괴 물리 및 태그 정보를 담은 데이터 에셋 */
+	/** 파괴 물리 및 소멸 설정을 담은 데이터 에셋 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Wings|Destruction")
 	TObjectPtr<UWingsDestructionData> DestructionData;
 
@@ -41,9 +41,6 @@ protected:
 	/** 이미 파괴되어 목표 카운트에서 제외되었는지 여부 */
 	bool bHasBeenCounted = false;
 
-	/** 데이터 에셋의 수치를 실제 컴포넌트에 적용하는 함수 */
-	void ApplyDestructionData();
-
 	/** Chaos 파괴 이벤트 핸들러 */
 	UFUNCTION()
 	void OnChaosBreak(const FChaosBreakEvent& BreakEvent);
@@ -57,5 +54,4 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "Wings|Destruction")
 	const UWingsDestructionData* GetDestructionData() const { return DestructionData.Get(); }
-	
 };

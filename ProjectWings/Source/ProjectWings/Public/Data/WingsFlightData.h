@@ -15,6 +15,10 @@ class PROJECTWINGS_API UWingsFlightData : public UPrimaryDataAsset
 	GENERATED_BODY()
 
 public:
+	/** 기체 질량 (기본값 200.0) */
+	UPROPERTY(EditAnywhere, Category = "Flight|Physics", meta = (ToolTip = "기체의 질량(kg)입니다. 파괴력 계산의 핵심 수치가 됩니다."))
+	float PawnMass = 200.0f;
+
 	/** 기수의 위/아래 회전 감도 */
 	UPROPERTY(EditAnywhere, Category = "Flight|Sensitivity", meta = (ToolTip = "기수의 위/아래 회전 감도입니다."))
 	float PitchSensitivity = 0.05f;
@@ -55,14 +59,6 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Flight|Thrust", meta = (ToolTip = "추진력을 조절할 때 한 번에 변화하는 양입니다."))
 	float ThrustStep = 100.0f;
 
-	/** 기본 연료 소모율 */
-	UPROPERTY(EditAnywhere, Category = "Flight|Fuel", meta = (ToolTip = "비행 중 초당 기본적으로 소모되는 연료량입니다."))
-	float FuelConsumptionRate = 1.0f;
-
-	/** 추진력에 따른 연료 소모 배율 */
-	UPROPERTY(EditAnywhere, Category = "Flight|Fuel", meta = (ToolTip = "추진력을 사용할 때 추가로 소모되는 연료의 배율입니다."))
-	float ThrustFuelMultiplier = 2.0f;
-
 	/** 동적 카메라 보간 속도 */
 	UPROPERTY(EditAnywhere, Category = "Flight|Camera", meta = (ToolTip = "속도 변화에 따른 FOV 및 카메라 거리 변화가 적용되는 속도입니다."))
 	float DynamicCameraInterpSpeed = 2.0f;
@@ -102,18 +98,6 @@ public:
 	/** 자유 시점 회전 감도 */
 	UPROPERTY(EditAnywhere, Category = "Flight|Camera", meta = (ToolTip = "자유 시점 모드에서 마우스 이동에 따른 카메라 회전 감도입니다."))
 	float FreeLookSensitivity = 0.5f;
-
-	/** 충격파 파괴 범위 */
-	UPROPERTY(EditAnywhere, Category = "Flight|Destruction", meta = (ToolTip = "충돌 시 발생하는 충격파의 반지름입니다."))
-	float DestructionFieldRadius = 500.0f;
-
-	/** 충격파 파괴 강도 */
-	UPROPERTY(EditAnywhere, Category = "Flight|Destruction", meta = (ToolTip = "충격파의 세기입니다. 장애물의 결합력을 끊는 데 사용됩니다."))
-	float DestructionFieldStrength = 10000000.0f;
-
-	/** 파괴력 계산 시 기준이 되는 질량 */
-	UPROPERTY(EditAnywhere, Category = "Flight|Destruction", meta = (ToolTip = "파괴력(강도/반경) 계산 시 기준이 되는 질량입니다. 실제 질량이 이보다 크면 파괴력이 증폭됩니다."))
-	float DestructionMassReference = 5000.0f;
 
 	/** 사망 카메라 거리 */
 	UPROPERTY(EditAnywhere, Category = "Flight|Camera|Death", meta = (ToolTip = "충돌 후 카메라가 기체로부터 멀어질 목표 거리입니다."))

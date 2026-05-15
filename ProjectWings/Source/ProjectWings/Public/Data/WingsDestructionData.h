@@ -4,11 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
-#include "GameplayTagContainer.h"
 #include "WingsDestructionData.generated.h"
 
 /**
- * 파괴 가능한 물체의 물리적 성질과 연출 태그를 관리하는 데이터 에셋
+ * 파괴 가능한 물체의 데이터를 관리하는 에셋입니다. (초기화됨)
  */
 UCLASS()
 class PROJECTWINGS_API UWingsDestructionData : public UPrimaryDataAsset
@@ -16,39 +15,15 @@ class PROJECTWINGS_API UWingsDestructionData : public UPrimaryDataAsset
 	GENERATED_BODY()
 
 public:
-	/** 파괴가 시작되는 최소 충격 강도 (Damage Threshold) */
-	UPROPERTY(EditAnywhere, Category = "Destruction|Physics", meta = (ClampMin = "0.0"))
-	float DamageThreshold = 100000.0f;
+	/** 파편이 유지되는 시간 (초). 이후에는 사라집니다. */
+	UPROPERTY(EditAnywhere, Category = "Destruction|Optimization")
+	float RemovalDuration = 2.0f;
 
-	/** 조각들 사이의 결합력 (Internal Strain) - 높을수록 잘 안부서짐 */
-	UPROPERTY(EditAnywhere, Category = "Destruction|Physics", meta = (ClampMin = "0.0"))
-	float InternalStrain = 10.0f;
+	/** 파괴가 일어나기 위한 최소 기체 속도 (Km/h) */
+	UPROPERTY(EditAnywhere, Category = "Destruction|Physics")
+	float MinBreakSpeedKmh = 60.0f;
 
-	/** 파편이 유지되는 시간 (초). 이후에는 사라지도록 설정 가능 */
-	UPROPERTY(EditAnywhere, Category = "Destruction|Optimization", meta = (ClampMin = "0.0"))
-	float RemovalDuration = 10.0f;
-
-	/** 파괴 시 파편이 튀어나가는 힘의 배율 */
-	UPROPERTY(EditAnywhere, Category = "Destruction|Visual", meta = (ClampMin = "0.0"))
-	float ExplosionForceMultiplier = 10.0f;
-
-	/** 충돌 시 데미지를 발생시킬지 여부 */
-	UPROPERTY(EditAnywhere, Category = "Destruction|ChainReaction")
-	bool bEnableCollisionDamage = false;
-
-	/** 파괴 발생 시 주변으로 충격을 전파할지 여부 */
-	UPROPERTY(EditAnywhere, Category = "Destruction|ChainReaction")
-	bool bEnablePropagation = true;
-
-	/** 파괴 전파 반지름 */
-	UPROPERTY(EditAnywhere, Category = "Destruction|ChainReaction", meta = (EditCondition = "bEnablePropagation", ClampMin = "0.0"))
-	float PropagationRadius = 300.0f;
-
-	/** 전파되는 파괴 강도 (Internal Strain에 대응) */
-	UPROPERTY(EditAnywhere, Category = "Destruction|ChainReaction", meta = (EditCondition = "bEnablePropagation", ClampMin = "0.0"))
-	float PropagationStrength = 5000.0f;
-
-	/** 이 물체의 재질 태그 (예: Destruction.Material.Stone) */
-	UPROPERTY(EditAnywhere, Category = "Destruction|Tags")
-	FGameplayTag DestructionTag;
+	/** 파괴 시 파편이 튀어나가는 힘의 세기 (밀어내기) */
+	UPROPERTY(EditAnywhere, Category = "Destruction|Visual")
+	float ExplosionForce = 1000.0f;
 };

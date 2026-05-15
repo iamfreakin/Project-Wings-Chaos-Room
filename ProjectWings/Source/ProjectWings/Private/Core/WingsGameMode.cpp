@@ -79,14 +79,13 @@ void AWingsGameMode::HandleGameWin()
 {
     if (bIsGameOver) return;
     bIsGameOver = true;
-    bIsWin = true;
     bIsWaitingForRetry = false;
 
     UE_LOG(LogWings, Display, TEXT("============================"));
     UE_LOG(LogWings, Display, TEXT("      STAGE CLEAR!!!"));
     UE_LOG(LogWings, Display, TEXT("============================"));
 
-    // 알림 방송!
+    // 알림 방송 (승리)
     OnGameStateChanged.Broadcast(true);
 }
 
@@ -94,13 +93,12 @@ void AWingsGameMode::HandleGameLoss()
 {
     if (bIsGameOver) return;
     bIsGameOver = true;
-    bIsLoss = true;
     bIsWaitingForRetry = false;
 
     UE_LOG(LogWings, Display, TEXT("============================"));
     UE_LOG(LogWings, Display, TEXT("      GAME OVER..."));
     UE_LOG(LogWings, Display, TEXT("============================"));
 
-    // 알림 방송!
+    // 알림 방송 (패배)
     OnGameStateChanged.Broadcast(false);
 }
