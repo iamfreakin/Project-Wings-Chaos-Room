@@ -1,5 +1,15 @@
 # Project Wings: Daily Development Plans
 
+> **※ 현재 코드 기준 주석 (2026-05 개발 중단 시점)**
+> 아래 일차별 계획은 작성 당시 그대로 보존합니다. 단, 다음 항목들은 이후 변경되어 **현재 코드와 다릅니다**:
+> - **7일차 / 9일차 — 연료 시스템**: 현재 코드에서 전면 제거됨. `EWingsPawnState`도 `Ready` 상태가 제거되어 `Flying`/`Crashed` 2종만 존재 (2일차 계획의 `Ready` 상태 무효).
+> - **10-11일차 — 연쇄 파괴 / `DestructionMassReference`**: 연쇄 파괴는 제거됨. 파괴력 기준 질량은 `UWingsFlightData::PawnMass`로 일원화됨.
+> - **14일차 — "목표물 인터페이스"**: 실제 구현은 인터페이스가 아니라 `AWingsDestructibleActor::bIsTarget` bool 프로퍼티.
+> - **15일차 — 속성**: 최종 `EWingsAttribute`는 `Stone/Wood/Grass`에 `Universal`(만능/폭탄)이 추가된 5종(None 포함).
+> - 이후 **Phase 4(기체 선택 덱 빌딩)** 작업이 추가되었으나 본 문서에는 일차별 계획이 작성되지 않음.
+>
+> 현재 구현 현황의 정확한 기준은 [GDD.md](GDD.md)를 참조하십시오.
+
 ## [1주차 1일차] WingsPawnBase 컴포넌트 구성 및 기초 설계 (완료)
 
 ### 1. 목표

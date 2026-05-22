@@ -1,5 +1,15 @@
 # Project Wings: Development History
 
+> **※ 현재 코드 기준 주석 (2026-05 개발 중단 시점)**
+> 아래는 날짜별 개발 기록이며 작성 당시 사실대로 보존합니다. 단, 이후 구조 단순화 과정에서 다음 기능들이 **현재 코드에서는 제거/축소**되었습니다:
+> - **연료(Fuel) 시스템**: 전면 제거됨. `GetFuelPercentage()`는 `[DEPRECATED]`로 남아 항상 1.0 반환. (2026-05-11, 2026-05-15 항목 참조)
+> - **연쇄 파괴(Chain Destruction) / `ApplyExternalStrain` / `PropagationDepth`**: 제거됨. (2026-05-12 항목 참조)
+> - **데이터 기반 재질 할당(`ExternalMaterial`/`InternalMaterial`)**: 제거됨. (2026-05-14 항목 참조)
+> - **`DestructionMassReference`**: 제거되고 `UWingsFlightData::PawnMass`로 일원화됨. (2026-05-12, 2026-05-15 항목 참조)
+> - **`bScaleOnRemoval`**: 현재 `UWingsDestructionData`에는 `RemovalDuration`, `MinBreakSpeedKmh`, `ExplosionForce` 3개 필드만 존재.
+>
+> 현재 구현 현황의 정확한 기준은 [GDD.md](GDD.md)를 참조하십시오.
+
 ## [2026-05-15] 비행 물리 개선 및 빌드 오류 수정
 ### Fixed
 - **비행 폰(WingsPawnBase) 빌드 오류 수정**: 인코딩 문제로 인한 `Speed`, `CurrentVelocity` 식별자 미선언 오류 해결 및 코드 정리.

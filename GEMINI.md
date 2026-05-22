@@ -29,7 +29,7 @@
 ### Build
 - **CLI Build (Win64):**
   ```powershell
-  .\Engine\Build\BatchFiles\Build.bat ProjectWings Editor Win64 Development "C:\Users\qjaqj\RiderProjects\Project-Wings-Chaos-Room\ProjectWings\ProjectWings.uproject" -waitmutex
+  .\Engine\Build\BatchFiles\Build.bat ProjectWings Editor Win64 Development "C:\Project-Wings-Chaos-Room\ProjectWings\ProjectWings.uproject" -waitmutex
   ```
 - **Editor:** Live Coding 활용 (에디터 내 버튼 클릭)
 
@@ -108,7 +108,7 @@
 ## 🚀 7. Core Tech Stack (UE 5.6.1 Focus)
 
 - **Enhanced Input:** 모든 입력 처리 적용.
-- **Common UI:** UI 기본 프레임워크.
+- **UMG (UUserWidget):** UI 기본 프레임워크. 전용 베이스 클래스 `UWingsUserWidget`를 통해 데이터 바인딩.
 - **C++ 20:** 최신 표준 기능 적극 활용.
 
 ---
@@ -136,7 +136,7 @@
 | Texture | `T_` | `T_Brick_Normal` |
 | Widget Blueprint | `WBP_` | `WBP_MainMenu` |
 | Data Asset | `DA_` | `DA_WeaponStats` |
-| Niagra System | `NS_` | `NS_Explosion` |
+| Niagara System | `NS_` | `NS_Explosion` |
 
 ---
 
