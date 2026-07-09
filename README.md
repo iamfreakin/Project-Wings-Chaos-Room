@@ -2,7 +2,7 @@
 
 발사할 기체를 선택하고, 실시간 3축 비행으로 목표 지점에 충돌시켜 속성이 일치하는 구조물만 Chaos Physics로 파괴하는 UE5.6 물리 퍼즐 프로토타입입니다.
 
-[Repository](https://github.com/iamfreakin/Project-Wings-Chaos-Room) | [Portfolio Hub](https://github.com/iamfreakin/GamePortfolio) | [GDD](GDD.md)
+[Repository](https://github.com/iamfreakin/Project-Wings-Chaos-Room) | [GDD](GDD.md)
 
 ## Overview
 
